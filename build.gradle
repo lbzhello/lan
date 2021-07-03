@@ -1,0 +1,87 @@
+// 构建脚本，最先运行，必须放在 plugins 前面
+buildscript {
+    print("hello lan")
+
+    ext {
+        lanVersion = '0.0.1'
+    }
+
+    repositories {
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+        }
+        jcenter()
+    }
+
+}
+
+// 所有项目共享配置
+allprojects {
+    apply plugin: "java"
+
+    group = 'lan'
+    version = '0.0.1-SNAPSHOT'
+    sourceCompatibility = '11'
+
+    // 字符编码
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+
+    sourceSets {
+        main {
+            resources {
+                //可以将java目录下的所有非.java资源打包到classes下
+                srcDir "src/main/java"
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/central'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/gradle-plugin'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/google'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/spring'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/spring-plugin'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/apache-snapshots'
+        }
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+
+    // 使用 JUnit 单元测试
+    test {
+        useJUnitPlatform()
+    }
+}
+
+subprojects {
+    dependencies {
+
+        compile 'cn.hutool:hutool-all:5.5.4'
+
+        testCompile group: 'junit', name: 'junit', version: '4.12'
+
+        // gradle 集成 lombok
+        compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+    }
+}
+
