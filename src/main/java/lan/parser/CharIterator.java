@@ -9,20 +9,7 @@ import java.text.CharacterIterator;
 public interface CharIterator {
     char DONE = '\uFFFF';
 
-    /**
-     * 设置源文件来源
-     * @param path
-     */
-    default void setSource(String path) {
-
-    }
-
-    // template method
-    default void refresh() {
-
-    }
-
-    boolean hasNext();
+    char LINE_FEED = '\n';
 
     char current();
 
@@ -30,9 +17,17 @@ public interface CharIterator {
 
     char previous();
 
+    boolean hasNext();
+
     /**
      * 获取当前所处位置，1-based
      * @return
      */
     int position();
+
+    /**
+     * 获取当前所处行
+     * @return
+     */
+    int lineNumber();
 }

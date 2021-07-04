@@ -78,12 +78,19 @@ public class StringIterator implements CharIterator {
 
     @Override
     public char next() {
+        if (current() == LINE_FEED) {
+            line++;
+        }
         return iterator.next();
     }
 
     @Override
     public char previous() {
-        return iterator.previous();
+        char previous = iterator.previous();
+        if (previous == LINE_FEED) {
+            line--;
+        }
+        return previous;
     }
 
     /**
@@ -93,5 +100,14 @@ public class StringIterator implements CharIterator {
     @Override
     public int position() {
         return iterator.getIndex() + 1;
+    }
+
+    /**
+     * 获取当前所处行
+     * @return
+     */
+    @Override
+    public int lineNumber() {
+        return line;
     }
 }
