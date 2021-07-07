@@ -1,13 +1,14 @@
 package lan.ast.impl;
 
-import lan.ast.Expression;
+import lan.ast.LeafExpression;
+import lan.ast.NameExpression;
 
 import java.math.BigDecimal;
 
 /**
  * 数字
  */
-public class NumberExpression extends BigDecimal implements ConstantExpression {
+public class NumberExpression extends BigDecimal implements LeafExpression, NameExpression {
     public NumberExpression(String val) {
         super(val);
     }
@@ -16,8 +17,4 @@ public class NumberExpression extends BigDecimal implements ConstantExpression {
         super(val);
     }
 
-    @Override
-    public Expression eval() {
-        return this;
-    }
 }

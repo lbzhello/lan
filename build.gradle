@@ -21,7 +21,7 @@ allprojects {
 
     group = 'lan'
     version = '0.0.1-SNAPSHOT'
-    sourceCompatibility = '12'
+    sourceCompatibility = '11'
 
     // 字符编码
     tasks.withType(JavaCompile) {
