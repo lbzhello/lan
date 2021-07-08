@@ -1,7 +1,5 @@
 package lan.ast;
 
-import lan.ast.Expression;
-
 /**
  * 叶子节点，代表一个值，求值 {@link #eval()} 时不会再进行计算
  * 直接返回自身

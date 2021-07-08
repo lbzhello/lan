@@ -3,6 +3,7 @@ package lan.ast;
 import lan.ast.impl.NumberExpression;
 import lan.ast.impl.StringExpression;
 import lan.ast.impl.SymbolExpression;
+import lan.ast.operator.PlusOperator;
 
 /**
  * 简单工厂
@@ -34,5 +35,13 @@ public class ExpressionFactory {
      */
     public static SymbolExpression symbol(String value) {
         return new SymbolExpression(value);
+    }
+
+    /**
+     * + 运算符
+     * @return
+     */
+    public static PlusOperator plus() {
+        return new PlusOperator();
     }
 }

@@ -1,11 +1,11 @@
 package lan.ast.impl;
 
 import lan.ast.LeafExpression;
-import lan.ast.NameExpression;
+import lan.ast.Name;
 
 import java.util.Objects;
 
-public class SymbolExpression implements LeafExpression, NameExpression {
+public class SymbolExpression implements LeafExpression, Name {
     private String value;
 
     public SymbolExpression(String value) {

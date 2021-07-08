@@ -1,27 +1,40 @@
 package lan.base;
 
 import lan.ast.Expression;
+import lan.ast.Name;
+import lan.ast.Operator;
 
 /**
- * 关键字
+ * 运算符
  */
-public enum OperatorEnum implements Operator {
-    NIL("nil", 0)
+public enum OperatorEnum implements Operator, Name {
+    NIL("nil"),
+    TRUE("true"),
+    FALSE("false"),
+
+    DEFINE("define"),
+
+    PLUS("+"),
     ;
 
-    // 预算付名称
+    // 运算符名称
     private String name;
-    // 参数个数
-    private int paramsNum;
-    private int priority;
 
-    OperatorEnum(String name, int priority) {
+    OperatorEnum(String name) {
         this.name = name;
-        this.priority = priority;
+    }
+
+    public String getName() {
+        return this.name;
     }
 
     @Override
     public Expression eval() {
         return this;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(name);
     }
 }

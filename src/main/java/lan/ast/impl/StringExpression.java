@@ -1,14 +1,14 @@
 package lan.ast.impl;
 
 import lan.ast.LeafExpression;
-import lan.ast.NameExpression;
+import lan.ast.Name;
 
 import java.util.Objects;
 
 /**
  * 字符串
  */
-public class StringExpression implements LeafExpression, NameExpression {
+public class StringExpression implements LeafExpression, Name {
     private String value;
 
     public StringExpression(String value){
