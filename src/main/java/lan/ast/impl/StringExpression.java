@@ -1,6 +1,6 @@
 package lan.ast.impl;
 
-import lan.ast.LeafExpression;
+import lan.ast.Value;
 import lan.ast.Name;
 
 import java.util.Objects;
@@ -8,7 +8,7 @@ import java.util.Objects;
 /**
  * 字符串
  */
-public class StringExpression implements LeafExpression, Name {
+public class StringExpression implements Value, Name {
     private String value;
 
     public StringExpression(String value){

@@ -10,6 +10,15 @@ import lan.ast.operator.PlusOperator;
  */
 public class ExpressionFactory {
     /**
+     * 创建一个值
+     * @param value
+     * @return
+     */
+    public static Value value(Object value) {
+        return new Value.Constant(value);
+    }
+
+    /**
      * String 表达式
      * @param value
      * @return

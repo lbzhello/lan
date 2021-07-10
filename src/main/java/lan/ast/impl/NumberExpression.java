@@ -1,6 +1,6 @@
 package lan.ast.impl;
 
-import lan.ast.LeafExpression;
+import lan.ast.Value;
 import lan.ast.Name;
 
 import java.math.BigDecimal;
@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 /**
  * 数字
  */
-public class NumberExpression extends BigDecimal implements LeafExpression, Name {
+public class NumberExpression extends BigDecimal implements Value, Name {
     public NumberExpression(String val) {
         super(val);
     }
