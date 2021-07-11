@@ -1,10 +1,13 @@
-package lan.ast.operator;
+package lan.ast.keyword;
 
 import lan.ast.Expression;
-import lan.ast.Operator;
+import lan.ast.Keyword;
 import lan.base.ValueEnum;
 
-public class PlusOperator implements Operator {
+/**
+ * define 关键字语法树
+ */
+public class DefineKeyword implements Keyword {
 
     @Override
     public Expression eval() {

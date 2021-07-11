@@ -3,6 +3,7 @@ package lan.ast;
 import lan.ast.impl.NumberExpression;
 import lan.ast.impl.StringExpression;
 import lan.ast.impl.SymbolExpression;
+import lan.ast.keyword.DefineKeyword;
 import lan.ast.operator.PlusOperator;
 
 /**
@@ -52,5 +53,13 @@ public class ExpressionFactory {
      */
     public static PlusOperator plus() {
         return new PlusOperator();
+    }
+
+    /**
+     * def 关键字
+     * @return
+     */
+    public static DefineKeyword define() {
+        return new DefineKeyword();
     }
 }

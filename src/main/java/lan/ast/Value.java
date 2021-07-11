@@ -3,7 +3,7 @@ package lan.ast;
 /**
  * 值表达式，求值 {@link #eval()} 时不会再进行计算
  * 直接返回自身
- * 如字符串，数字，符号等
+ * 如字符串，数字，布尔值等
  */
 public interface Value extends Expression {
     default Expression eval() {
