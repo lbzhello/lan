@@ -8,7 +8,7 @@ import lan.ast.Name;
 import java.util.function.Supplier;
 
 /**
- * 运算符
+ * 关键字
  */
 public enum KeywordEnum implements Name {
     DEFINE("define", ExpressionFactory::define),
