@@ -4,7 +4,7 @@ import lan.ast.Expression;
 import lan.ast.Name;
 import lan.ast.Value;
 import lan.base.Definition;
-import lan.base.OperatorEnum;
+import lan.base.OperatorConfig;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,26 +21,26 @@ public class LanDefinition implements Definition {
         // 获取 keywords
 
         // 运算符优先级
-        operatorPrecedence.put(OperatorEnum.COLON.getName(), -10);
+        operatorPrecedence.put(OperatorConfig.COLON, -10);
 
-        operatorPrecedence.put(OperatorEnum.ARROW.getName(), -1);
+        operatorPrecedence.put(OperatorConfig.ARROW, -1);
 
-        operatorPrecedence.put(OperatorEnum.ASSIGN.getName(), 0);
+        operatorPrecedence.put(OperatorConfig.ASSIGN, 0);
 
-        operatorPrecedence.put(OperatorEnum.OR.getName(), 11);
-        operatorPrecedence.put(OperatorEnum.AND.getName(), 12);
+        operatorPrecedence.put(OperatorConfig.OR, 11);
+        operatorPrecedence.put(OperatorConfig.AND, 12);
 
-        operatorPrecedence.put(OperatorEnum.EQUAL.getName(), 21);
-        operatorPrecedence.put(OperatorEnum.NOT_EQUAL.getName(), 21);
-        operatorPrecedence.put(OperatorEnum.GT.getName(), 21);
-        operatorPrecedence.put(OperatorEnum.GE.getName(), 21);
-        operatorPrecedence.put(OperatorEnum.LT.getName(), 21);
-        operatorPrecedence.put(OperatorEnum.LE.getName(), 21);
+        operatorPrecedence.put(OperatorConfig.EQUAL, 21);
+        operatorPrecedence.put(OperatorConfig.NOT_EQUAL, 21);
+        operatorPrecedence.put(OperatorConfig.GT, 21);
+        operatorPrecedence.put(OperatorConfig.GE, 21);
+        operatorPrecedence.put(OperatorConfig.LT, 21);
+        operatorPrecedence.put(OperatorConfig.LE, 21);
 
-        operatorPrecedence.put(OperatorEnum.PLUS.getName(), 31);
-        operatorPrecedence.put(OperatorEnum.MINUS.getName(), 31);
-        operatorPrecedence.put(OperatorEnum.MUL.getName(), 41);
-        operatorPrecedence.put(OperatorEnum.DIV.getName(), 41);
+        operatorPrecedence.put(OperatorConfig.PLUS, 31);
+        operatorPrecedence.put(OperatorConfig.MINUS, 31);
+        operatorPrecedence.put(OperatorConfig.MUL, 41);
+        operatorPrecedence.put(OperatorConfig.DIV, 41);
 
     }
 
