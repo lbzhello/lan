@@ -14,8 +14,8 @@ public class NameOption<T> implements Name {
     // 语法树
     private Supplier<T> supplier;
 
-    public static final <S> NameOption<S> valueOf(String name, Supplier<S> supplier) {
-        return new NameOption(name, supplier);
+    public static <S> NameOption<S> valueOf(String name, Supplier<S> supplier) {
+        return new NameOption<>(name, supplier);
     }
 
     private NameOption(String name, Supplier<T> supplier) {
