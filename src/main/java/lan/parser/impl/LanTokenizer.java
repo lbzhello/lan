@@ -12,19 +12,19 @@ import java.util.Map;
 public class LanTokenizer implements Tokenizer {
     private static final Map<Character, Token> delimiter = new HashMap<>();
     static {
-        delimiter.put(',', LanToken.COMMA);
-        delimiter.put(';', LanToken.SEMICOLON);
-        delimiter.put('.', LanToken.POINT);
-        delimiter.put(':', LanToken.COLON);
-        delimiter.put('(', LanToken.ROUND_BRACKET_LEFT);
-        delimiter.put(')', LanToken.ROUND_BRACKET_RIGHT);
-        delimiter.put('{', LanToken.CURLY_BRACKET_LEFT);
-        delimiter.put('}', LanToken.CURLY_BRACKET_RIGHT);
-        delimiter.put('[', LanToken.SQUARE_BRACKET_LEFT);
-        delimiter.put(']', LanToken.SQUARE_BRACKET_RIGHT);
-        delimiter.put('\\', LanToken.SLASH_LEFT);
-        delimiter.put('"', LanToken.QUOTE_MARK_DOUBLE);
-        delimiter.put('\'', LanToken.QUOTE_MARK_SINGLE);
+        delimiter.put(',', Token.COMMA);
+        delimiter.put(';', Token.SEMICOLON);
+        delimiter.put('.', Token.POINT);
+        delimiter.put(':', Token.COLON);
+        delimiter.put('(', Token.ROUND_BRACKET_LEFT);
+        delimiter.put(')', Token.ROUND_BRACKET_RIGHT);
+        delimiter.put('{', Token.CURLY_BRACKET_LEFT);
+        delimiter.put('}', Token.CURLY_BRACKET_RIGHT);
+        delimiter.put('[', Token.SQUARE_BRACKET_LEFT);
+        delimiter.put(']', Token.SQUARE_BRACKET_RIGHT);
+        delimiter.put('\\', Token.SLASH_LEFT);
+        delimiter.put('"', Token.QUOTE_MARK_DOUBLE);
+        delimiter.put('\'', Token.QUOTE_MARK_SINGLE);
     }
 
     private static final boolean isDelimiter(Character c) {

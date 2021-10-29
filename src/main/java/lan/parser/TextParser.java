@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.text.StringCharacterIterator;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -72,6 +73,14 @@ public class TextParser implements CharIterator {
             logger.error("failed to read file", e);
             return EMPTY_ITERATOR;
         }
+    }
+
+    public boolean addDelimiter(char c) {
+        return delimiters.add(c);
+    }
+
+    public void addDelimiters(Collection<Character> delimiters) {
+        delimiters.addAll(delimiters);
     }
 
     @Override
@@ -190,5 +199,13 @@ public class TextParser implements CharIterator {
         }
         iterator.setIndex(p);
         return sb.toString();
+    }
+
+    public Set<Character> getDelimiters() {
+        return delimiters;
+    }
+
+    public void setDelimiters(Set<Character> delimiters) {
+        this.delimiters = delimiters;
     }
 }
