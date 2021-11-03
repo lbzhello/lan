@@ -102,7 +102,7 @@ public class LanParser implements Parser {
             return this.parseExpression();
         } else if (parser.hasNext()) {
             String word = parser.nextWord();
-            Expression expression = parseExpressionWithHead(word);
+            Expression expression = parseTail(word);
         } else {
             return Token.EOF;
         }
@@ -115,7 +115,7 @@ public class LanParser implements Parser {
      * @param head
      * @return
      */
-    private Expression parseExpressionWithHead(String head) {
+    private Expression parseTail(String head) {
         // 关键字
         if (this.definition.isKeyWord(head)) {
             // 交给对应的关键字解析器解析
