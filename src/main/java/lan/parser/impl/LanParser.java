@@ -1,10 +1,14 @@
 package lan.parser.impl;
 
 import lan.ast.Expression;
+import lan.base.Definition;
 import lan.parser.Parser;
 import lan.parser.TextParser;
 import lan.parser.Token;
 
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -61,10 +65,25 @@ public class LanParser implements Parser {
             BACK_QUOTE
     );
 
+    /**
+     * 基础文本解析器
+     */
     private TextParser parser;
 
-    public LanParser(TextParser parser) {
+    /**
+     * 基础语言定义，运算符，关键字等
+     */
+    private Definition definition;
+
+    /**
+     * 关键字解析器
+     */
+    private Map<String, Parser> keywordParser = new HashMap<>();
+
+    public LanParser(TextParser parser, Definition definition, @Nullable Map<String, Parser> keywordParser) {
         this.parser = parser;
+        this.definition = definition;
+        this.keywordParser = keywordParser;
         this.parser.addDelimiters(delimiters);
     }
 
@@ -82,11 +101,30 @@ public class LanParser implements Parser {
             parser.next();
             return this.parseExpression();
         } else if (parser.hasNext()) {
-            parser.nextWord();
+            String word = parser.nextWord();
+            Expression expression = parseExpressionWithHead(word);
         } else {
             return Token.EOF;
         }
 
         return null;
+    }
+
+    /**
+     * 根据前一个单词，解析接下来的语法结构
+     * @param head
+     * @return
+     */
+    private Expression parseExpressionWithHead(String head) {
+        // 关键字
+        if (this.definition.isKeyWord(head)) {
+            // 交给对应的关键字解析器解析
+            getKeywordParser(head).parseExpression();
+        }
+        return null;
+    }
+
+    private Parser getKeywordParser(String keyword) {
+        return this.keywordParser.get(keyword);
     }
 }
