@@ -80,7 +80,15 @@ public class TextParser implements CharIterator {
     }
 
     public void addDelimiters(Collection<Character> delimiters) {
-        delimiters.addAll(delimiters);
+        getDelimiters().addAll(delimiters);
+    }
+
+    private void removeDelimiter(Collection<Character> delimiters) {
+        getDelimiters().removeAll(delimiters);
+    }
+
+    public Set<Character> getDelimiters() {
+        return delimiters;
     }
 
     @Override
@@ -134,7 +142,7 @@ public class TextParser implements CharIterator {
      * @return
      */
     public boolean isDelimiter(char c) {
-        return delimiters.contains(c) || Character.isWhitespace(c) || c == DONE;
+        return delimiters.contains(c) || Character.isWhitespace(c);
     }
 
     /**
@@ -143,7 +151,7 @@ public class TextParser implements CharIterator {
      */
     public String nextWord() {
         StringBuilder sb = new StringBuilder();
-        while (!isDelimiter(current())) {
+        while (!isDelimiter(current()) && hasNext()) {
             sb.append(current());
             next();
         }
@@ -201,11 +209,4 @@ public class TextParser implements CharIterator {
         return sb.toString();
     }
 
-    public Set<Character> getDelimiters() {
-        return delimiters;
-    }
-
-    public void setDelimiters(Set<Character> delimiters) {
-        this.delimiters = delimiters;
-    }
 }

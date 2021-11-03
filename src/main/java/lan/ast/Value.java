@@ -6,6 +6,10 @@ package lan.ast;
  * 如字符串，数字，布尔值等
  */
 public interface Value extends Expression {
+    Constant NIL = new Constant("nil");
+    Constant TRUE = new Constant("true");
+    Constant FALSE = new Constant("false");
+
     default Expression eval() {
         return this;
     }
