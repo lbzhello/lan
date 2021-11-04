@@ -189,14 +189,16 @@ public class TextParser implements CharIterator {
 
     /**
      * 跳过除了换行符外的空白字符，
-     * @return 当前指针所在字符
+     * @return 是否跳过了空白字符
      */
-    public char skipBlankNotLineBreak() {
+    public boolean skipBlankNotLineBreak() {
+        boolean isSkip = false;
         while (Character.isWhitespace(current()) && current() != LINE_BREAK) {
             next();
+            isSkip = true;
         }
 
-        return current();
+        return isSkip;
     }
 
     /**

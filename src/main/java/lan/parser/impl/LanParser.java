@@ -141,75 +141,56 @@ public class LanParser implements Parser {
         }
 
         Expression expr = expr();
-        if (parser.isBlankNotLineBreak()) {
-            expr = blankExpr(expr);
-        }
         return statement0(expr);
-    }
-
-    private Expression parseTail(Expression head) {
-        return
     }
 
     /**
      * 根据前一个表达式，解析接下来的语法结构
-     * @param head
+     * @param left
      * @return
      */
-    private Expression statement0(Expression head) {
+    private Expression statement0(Expression left) {
+        // expr ... 表达式后面跟空格
+        if (parser.skipBlankNotLineBreak()) {
+            char current = parser.current();
+            if (isLineBreak()) {
+                parser.next(); // eat
+                return left;
+            }
+
+            // 运算符
+            if (!parser.isDelimiter(current)) {
+                String word = parser.nextWord();
+                if (definition.isOperator(word)) { // 运算符 left +...
+                    return operatorExpr(left, word);
+                } else { // 函数调用 max a...
+                    return commandExpr(left, word);
+                }
+
+            }
+
+            if (current == '(' || current == '[' || current == '{') { // expr p1 p2... 命令行方式的函数调用
+                Expression commandExpr = commandExpr(left);
+                return commandExpr;
+            }
+
+        }
         char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
 
         } else if (current == ',') { // expr1, expr2...
-            head = commaListExpr(head);
-            return statement0(head);
+            left = commaListExpr(left);
+            return statement0(left);
         } else if (current == '.') {
-
-        } else if (parser.isBlankNotLineBreak()) { // expr ...
-            Expression expression = blankExpr(head);
 
         }
 
         if (isLineBreak()) {
             parser.next(); // eat '\n'
-            return head;
+            return left;
         }
 
-        return head;
-    }
-
-    /**
-     * 表达式后跟空格的表达式解析
-     * e.g. expr expr... || max 3 4 || 3 + 4
-     * @param head
-     * @return
-     */
-    private Expression blankExpr(Expression head) {
-        char current = parser.skipBlankNotLineBreak();
-        if (isLineBreak()) {
-            parser.next(); // eat
-            return head;
-        }
-
-        // 运算符
-        if (!parser.isDelimiter(current)) {
-            Expression expr2 = expr();
-            if (definition.isOperator(expr2)) { // 运算符 a + b
-                Expression expression = operatorExpr(head, expr2);
-            } else { // 函数调用 max a b
-                Expression expression = commandCallExpr(head, );
-            }
-
-        }
-
-        if (current == '(' || current == '[' || current == '{') { // expr p1 p2... 命令行方式的函数调用
-            Expression commandExpr = commandCallExpr(head);
-            return commandExpr;
-        }
-
-        if (parser.isDelimiter(current)) { // a .b 转成 a.b 解析
-            return statement0(head);
-        }
+        return left;
     }
 
     /**
@@ -217,7 +198,17 @@ public class LanParser implements Parser {
      * e.g. max a b c
      * @return
      */
-    private Expression commandCallExpr(Expression left, Expression... params) {
+    private Expression commandExpr(Expression left) {
+        return null;
+    }
+
+    /**
+     *
+     * @param left
+     * @param nextWord 已经解析的下一个单词
+     * @return
+     */
+    private Expression commandExpr(Expression left, String nextWord) {
         return null;
     }
 
@@ -255,7 +246,7 @@ public class LanParser implements Parser {
      * 解析运算符表达式
      * @return
      */
-    private Expression operatorExpr(Expression left, Expression op) {
+    private Expression operatorExpr(Expression left, String op) {
         return null;
     }
 }
