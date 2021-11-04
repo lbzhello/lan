@@ -103,7 +103,7 @@ public class TextParser implements CharIterator {
 
     @Override
     public char next() {
-        if (current() == LINE_FEED) {
+        if (current() == LINE_BREAK) {
             line++;
         }
         return iterator.next();
@@ -112,7 +112,7 @@ public class TextParser implements CharIterator {
     @Override
     public char previous() {
         char previous = iterator.previous();
-        if (previous == LINE_FEED) {
+        if (previous == LINE_BREAK) {
             line--;
         }
         return previous;
@@ -177,12 +177,34 @@ public class TextParser implements CharIterator {
 
     /**
      * 跳过空白字符
-     * @return
+     * @return 当前指针指向字符
      */
-    public void skipBlank() {
-        if (Character.isWhitespace(current())) {
+    public char skipBlank() {
+        while (Character.isWhitespace(current())) {
             next();
         }
+
+        return current();
+    }
+
+    /**
+     * 跳过除了换行符外的空白字符，
+     * @return 当前指针所在字符
+     */
+    public char skipBlankNotLineBreak() {
+        while (Character.isWhitespace(current()) && current() != LINE_BREAK) {
+            next();
+        }
+
+        return current();
+    }
+
+    /**
+     * 非换行字符的空白字符
+     * @return
+     */
+    public boolean isBlankNotLineBreak() {
+        return Character.isWhitespace(current()) && current() != LINE_BREAK;
     }
 
     /**

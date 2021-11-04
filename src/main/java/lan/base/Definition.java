@@ -1,5 +1,6 @@
 package lan.base;
 
+import lan.ast.Expression;
 import lan.ast.Keyword;
 import lan.ast.Operator;
 
@@ -7,6 +8,8 @@ import lan.ast.Operator;
  * 语言定义
  */
 public interface Definition {
+    boolean isOperator(Expression op);
+
     /**
      * 判断标识符是否是运算符
      * @param op

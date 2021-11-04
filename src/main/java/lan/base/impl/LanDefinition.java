@@ -137,7 +137,7 @@ public class LanDefinition implements Definition {
     /**
      * 获取运算符表达式
      * @param op 运算符，如 + - * / 等
-     * @return 对应的运算符表达式，可以执行响应的计算
+     * @return 对应的运算符表达式，可以执行相应的计算
      */
     @Override
     public Operator createOperator(String op) {
@@ -179,4 +179,8 @@ public class LanDefinition implements Definition {
         return operatorPrecedence.get(operatorName);
     }
 
+    @Override
+    public boolean isOperator(Expression op) {
+        return isOperator(String.valueOf(op));
+    }
 }
