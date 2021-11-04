@@ -75,6 +75,11 @@ public class LanDefinition implements Definition {
      */
     private final Map<String, Supplier<Keyword>> keywordSupplier = new HashMap<>();
 
+    /**
+     * 默认优先级
+     */
+    private static final int DEFAULT_PRECEDENCE = 0;
+
     private void init() {
         // 关键字
         keywordSupplier.put(DEFINE, ExpressionFactory::define);
@@ -83,27 +88,35 @@ public class LanDefinition implements Definition {
         operatorSupplier.put(COLON, ExpressionFactory::plus);
 
         // 运算符优先级
-        operatorPrecedence.put(COLON, -10);
+        setPrecedence(COLON, -10);
 
-        operatorPrecedence.put(ARROW, -1);
+        setPrecedence(ARROW, -1);
 
-        operatorPrecedence.put(ASSIGN, 0);
+        setPrecedence(ASSIGN, 0);
 
-        operatorPrecedence.put(OR, 11);
-        operatorPrecedence.put(AND, 12);
+        setPrecedence(OR, 11);
+        setPrecedence(AND, 12);
 
-        operatorPrecedence.put(EQUAL, 21);
-        operatorPrecedence.put(NOT_EQUAL, 21);
-        operatorPrecedence.put(GT, 21);
-        operatorPrecedence.put(GE, 21);
-        operatorPrecedence.put(LT, 21);
-        operatorPrecedence.put(LE, 21);
+        setPrecedence(EQUAL, 21);
+        setPrecedence(NOT_EQUAL, 21);
+        setPrecedence(GT, 21);
+        setPrecedence(GE, 21);
+        setPrecedence(LT, 21);
+        setPrecedence(LE, 21);
 
-        operatorPrecedence.put(PLUS, 31);
-        operatorPrecedence.put(MINUS, 31);
-        operatorPrecedence.put(MUL, 41);
-        operatorPrecedence.put(DIV, 41);
+        setPrecedence(PLUS, 31);
+        setPrecedence(MINUS, 31);
+        setPrecedence(MUL, 41);
+        setPrecedence(DIV, 41);
 
+    }
+
+    /**
+     * 配置运算符优先级
+     * @return
+     */
+    private void setPrecedence(String op, int precedence) {
+        operatorPrecedence.put(op, DEFAULT_PRECEDENCE + precedence);
     }
 
     /**
