@@ -142,36 +142,39 @@ public class LanParser implements Parser {
         }
 
         Expression expr = expr();
-        return statementTail(expr);
+        return statementTail(expr, true);
     }
 
     /**
      * 根据句子的开头，解析句子接下来的语句结构
-     * @param head
+     * @param left
+     * @param parseCommand 是否解析命令表达式， e.g. left 3 5
+     *                     如果 left 可能是一个命令，则为 true, 否则为 false
      * @return
      */
-    private Expression statementTail(Expression head) {
+    private Expression statementTail(Expression left, boolean parseCommand) {
         // expr ... 表达式后面跟空格
         if (parser.skipBlankNotLineBreak()) {
             char current = parser.current();
             if (isLineBreak()) {
                 parser.next(); // eat
-                return head;
+                return left;
             }
 
             // 运算符
             if (!parser.isDelimiter(current)) {
                 String word = parser.nextWord();
-                if (definition.isOperator(word)) { // 运算符 head +...
-                    return operatorExpr(head, word);
-                } else { // 函数调用 max a...
-                    return commandExpr(head, word);
+                if (definition.isOperator(word)) { // 运算符 left +...
+                    return operatorExpr(left, word);
                 }
 
+                if (parseCommand) { // 函数调用 left param...
+                    return commandExpr(left, word);
+                }
             }
 
             if (current == '(' || current == '[' || current == '{') { // expr p1 p2... 命令行方式的函数调用
-                Expression commandExpr = commandExpr(head);
+                Expression commandExpr = commandExpr(left);
                 return commandExpr;
             }
 
@@ -180,18 +183,18 @@ public class LanParser implements Parser {
         if (current == '(') { // 函数调用 expr(...)
 
         } else if (current == ',') { // expr1, expr2...
-            head = commaListExpr(head);
-            return statementTail(head);
+            left = commaListExpr(left);
+            return statementTail(left, false);
         } else if (current == '.') {
 
         }
 
         if (isLineBreak()) {
             parser.next(); // eat '\n'
-            return head;
+            return left;
         }
 
-        return head;
+        return left;
     }
 
     /**
