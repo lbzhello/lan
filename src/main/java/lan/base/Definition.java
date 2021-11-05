@@ -17,6 +17,10 @@ public interface Definition {
      */
     boolean isOperator(String op);
 
+    default boolean isOperator(char op) {
+        return isOperator(String.valueOf(op));
+    }
+    
     /**
      * 获取运算符表达式
      * @param op 运算符，如 + - * / 等

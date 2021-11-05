@@ -124,10 +124,35 @@ public class LanInterpreter implements Interpreter {
                 // 调用
             }
         } else if (parser.hasNext()) {
-            return null;
+            parser.next(); // 去掉其他无用字符
+            return expr();
         }
 
         return Token.EOF;
+    }
+
+    /**
+     * 分隔符表达式
+     * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
+     * @return
+     */
+    private Expression delimiterExpr(Expression left) {
+        char current = parser.current();
+        if (current == '(') { // 函数调用 expr(...)
+
+        } else if (current == ',') { // expr1, expr2...
+            left = commaListExpr(left);
+            return statementTail(left, false);
+        } else if (current == '.') {
+
+        }
+
+        if (isLineBreak()) {
+            parser.next(); // eat '\n'
+            return left;
+        }
+
+        return left;
     }
 
     /**
@@ -200,6 +225,7 @@ public class LanInterpreter implements Interpreter {
 
         return left;
     }
+
 
     /**
      * 命令方式的函数调用

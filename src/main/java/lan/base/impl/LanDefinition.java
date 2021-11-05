@@ -85,11 +85,9 @@ public class LanDefinition implements Definition {
         keywordSupplier.put(DEFINE, ExpressionFactory::define);
 
         // 运算符
-        operatorSupplier.put(COLON, ExpressionFactory::plus);
+        operatorSupplier.put(COLON2, ExpressionFactory::plus);
 
         // 运算符优先级
-        setPrecedence(COLON, -10);
-
         setPrecedence(ARROW, -1);
 
         setPrecedence(ASSIGN, 0);
@@ -108,6 +106,10 @@ public class LanDefinition implements Definition {
         setPrecedence(MINUS, 31);
         setPrecedence(MUL, 41);
         setPrecedence(DIV, 41);
+
+        setPrecedence(POINT, 50);
+
+        setPrecedence(COLON2, 51);
 
     }
 
