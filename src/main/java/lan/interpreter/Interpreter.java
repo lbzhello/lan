@@ -1,4 +1,4 @@
-package lan.parser;
+package lan.interpreter;
 
 /**
  * 语法解析

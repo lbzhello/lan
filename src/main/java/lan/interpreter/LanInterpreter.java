@@ -1,8 +1,8 @@
-package lan.parser.impl;
+package lan.interpreter;
 
 import lan.ast.Expression;
 import lan.base.Definition;
-import lan.parser.Interpreter;
+import lan.interpreter.Interpreter;
 import lan.parser.TextParser;
 import lan.parser.Token;
 
