@@ -131,7 +131,8 @@ public class LanParser implements Parser {
     }
 
     /**
-     * 解析一个句子，即由最小表达式 {@link #expr()} 组成的语句
+     * 从头解析一个句子，即由表达式 {@link #expr()}，运算符 {@link #operatorExpr(Expression, String)}，
+     * 命令 {@link #commandExpr(Expression)} 等组成的语句
      * @return
      */
     private Expression statement() {
@@ -141,36 +142,36 @@ public class LanParser implements Parser {
         }
 
         Expression expr = expr();
-        return statement0(expr);
+        return statementTail(expr);
     }
 
     /**
-     * 根据前一个表达式，解析接下来的语法结构
-     * @param left
+     * 根据句子的开头，解析句子接下来的语句结构
+     * @param head
      * @return
      */
-    private Expression statement0(Expression left) {
+    private Expression statementTail(Expression head) {
         // expr ... 表达式后面跟空格
         if (parser.skipBlankNotLineBreak()) {
             char current = parser.current();
             if (isLineBreak()) {
                 parser.next(); // eat
-                return left;
+                return head;
             }
 
             // 运算符
             if (!parser.isDelimiter(current)) {
                 String word = parser.nextWord();
-                if (definition.isOperator(word)) { // 运算符 left +...
-                    return operatorExpr(left, word);
+                if (definition.isOperator(word)) { // 运算符 head +...
+                    return operatorExpr(head, word);
                 } else { // 函数调用 max a...
-                    return commandExpr(left, word);
+                    return commandExpr(head, word);
                 }
 
             }
 
             if (current == '(' || current == '[' || current == '{') { // expr p1 p2... 命令行方式的函数调用
-                Expression commandExpr = commandExpr(left);
+                Expression commandExpr = commandExpr(head);
                 return commandExpr;
             }
 
@@ -179,18 +180,18 @@ public class LanParser implements Parser {
         if (current == '(') { // 函数调用 expr(...)
 
         } else if (current == ',') { // expr1, expr2...
-            left = commaListExpr(left);
-            return statement0(left);
+            head = commaListExpr(head);
+            return statementTail(head);
         } else if (current == '.') {
 
         }
 
         if (isLineBreak()) {
             parser.next(); // eat '\n'
-            return left;
+            return head;
         }
 
-        return left;
+        return head;
     }
 
     /**
