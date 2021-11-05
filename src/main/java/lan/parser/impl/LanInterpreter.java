@@ -2,7 +2,7 @@ package lan.parser.impl;
 
 import lan.ast.Expression;
 import lan.base.Definition;
-import lan.parser.Parser;
+import lan.parser.Interpreter;
 import lan.parser.TextParser;
 import lan.parser.Token;
 
@@ -15,7 +15,7 @@ import java.util.Set;
  * 语言解析器
  * 关键字通过额外的解析器解析，支持扩展
  */
-public class LanParser implements Parser {
+public class LanInterpreter implements Interpreter {
 
     /**
      * 分隔符定义
@@ -78,12 +78,12 @@ public class LanParser implements Parser {
     /**
      * 关键字解析器
      */
-    private Map<String, Parser> keywordParser = new HashMap<>();
+    private Map<String, Interpreter> keywordInterpreter = new HashMap<>();
 
-    public LanParser(TextParser parser, Definition definition, @Nullable Map<String, Parser> keywordParser) {
+    public LanInterpreter(TextParser parser, Definition definition, @Nullable Map<String, Interpreter> keywordInterpreter) {
         this.parser = parser;
         this.definition = definition;
-        this.keywordParser = keywordParser;
+        this.keywordInterpreter = keywordInterpreter;
         this.parser.addDelimiters(delimiters);
     }
 
@@ -92,8 +92,8 @@ public class LanParser implements Parser {
      * @param keyword
      * @return
      */
-    private Parser getKeywordParser(String keyword) {
-        return this.keywordParser.get(keyword);
+    private Interpreter getKeywordInterpreter(String keyword) {
+        return this.keywordInterpreter.get(keyword);
     }
 
     /**
@@ -120,7 +120,7 @@ public class LanParser implements Parser {
             // 关键字
             if (this.definition.isKeyWord(token)) {
                 // 交给对应的关键字解析器解析
-                Parser keywordParser = getKeywordParser(token);
+                Interpreter keywordInterpreter = getKeywordInterpreter(token);
                 // 调用
             }
         } else if (parser.hasNext()) {
@@ -164,16 +164,20 @@ public class LanParser implements Parser {
             // 运算符
             if (!parser.isDelimiter(current)) {
                 String word = parser.nextWord();
-                if (definition.isOperator(word)) { // 运算符 left +...
+
+                // left +... 运算符
+                if (definition.isOperator(word)) {
                     return operatorExpr(left, word);
                 }
 
-                if (parseCommand) { // 函数调用 left param...
+                // 函数调用 left param...
+                if (parseCommand) {
                     return commandExpr(left, word);
                 }
             }
 
-            if (current == '(' || current == '[' || current == '{') { // expr p1 p2... 命令行方式的函数调用
+            // expr (... 命令调用，注意中间由空格，无空格表示函数调用
+            if (current == '(' || current == '[' || current == '{') {
                 Expression commandExpr = commandExpr(left);
                 return commandExpr;
             }
