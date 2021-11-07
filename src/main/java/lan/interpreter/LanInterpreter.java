@@ -2,7 +2,6 @@ package lan.interpreter;
 
 import lan.ast.Expression;
 import lan.base.Definition;
-import lan.interpreter.Interpreter;
 import lan.parser.TextParser;
 import lan.parser.Token;
 
@@ -132,17 +131,19 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 分隔符表达式
+     * 二级表达式，有基本表达式 {@link #expr()} 构成的简单表达式
+     * 不包括运算符表达式 {@link #operatorExpr(Expression)} 和命令表达
+     * 式 {@link #commandExpr(Expression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
      */
-    private Expression delimiterExpr(Expression left) {
+    private Expression expr2(Expression left) {
         char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
 
         } else if (current == ',') { // expr1, expr2...
             left = commaListExpr(left);
-            return statementTail(left, false);
+            return operatorExpr(left);
         } else if (current == '.') {
 
         }
@@ -167,7 +168,7 @@ public class LanInterpreter implements Interpreter {
         }
 
         Expression expr = expr();
-        return statementTail(expr, true);
+        return statement(expr);
     }
 
     /**
@@ -177,7 +178,7 @@ public class LanInterpreter implements Interpreter {
      *                     如果 left 可能是一个命令，则为 true, 否则为 false
      * @return
      */
-    private Expression statementTail(Expression left, boolean parseCommand) {
+    private Expression statement(Expression left) {
         // expr ... 表达式后面跟空格
         if (parser.skipBlankNotLineBreak()) {
             char current = parser.current();
@@ -196,9 +197,7 @@ public class LanInterpreter implements Interpreter {
                 }
 
                 // 函数调用 left param...
-                if (parseCommand) {
-                    return commandExpr(left, word);
-                }
+                return commandExpr(left, word);
             }
 
             // expr (... 命令调用，注意中间由空格，无空格表示函数调用
@@ -213,7 +212,7 @@ public class LanInterpreter implements Interpreter {
 
         } else if (current == ',') { // expr1, expr2...
             left = commaListExpr(left);
-            return statementTail(left, false);
+            return operatorExpr(left);
         } else if (current == '.') {
 
         }
@@ -281,6 +280,15 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operatorExpr(Expression left, String op) {
+        return null;
+    }
+
+    /**
+     * 解析 operator 或直接返回
+     * @param left
+     * @return
+     */
+    private Expression operatorExpr(Expression left) {
         return null;
     }
 }
