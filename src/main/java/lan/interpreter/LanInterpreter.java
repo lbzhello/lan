@@ -131,13 +131,13 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 二级表达式，有基本表达式 {@link #expr()} 构成的简单表达式
+     * 根据 left 继续向下解析一次
      * 不包括运算符表达式 {@link #operatorExpr(Expression)} 和命令表达
      * 式 {@link #commandExpr(Expression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
      */
-    private Expression expr2(Expression left) {
+    private Expression expr(Expression left) {
         char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
 
@@ -148,17 +148,13 @@ public class LanInterpreter implements Interpreter {
 
         }
 
-        if (isLineBreak()) {
-            parser.next(); // eat '\n'
-            return left;
-        }
-
         return left;
     }
 
     /**
      * 从头解析一个句子，即由表达式 {@link #expr()}，运算符 {@link #operatorExpr(Expression, String)}，
      * 命令 {@link #commandExpr(Expression)} 等组成的语句
+     *
      * @return
      */
     private Expression statement() {
@@ -173,9 +169,9 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 根据句子的开头，解析句子接下来的语句结构
+     * 会吃掉行结束符
+     * e.g. left a b... || left + b...
      * @param left
-     * @param parseCommand 是否解析命令表达式， e.g. left 3 5
-     *                     如果 left 可能是一个命令，则为 true, 否则为 false
      * @return
      */
     private Expression statement(Expression left) {
@@ -207,24 +203,21 @@ public class LanInterpreter implements Interpreter {
             }
 
         }
-        char current = parser.current();
-        if (current == '(') { // 函数调用 expr(...)
 
-        } else if (current == ',') { // expr1, expr2...
-            left = commaListExpr(left);
-            return operatorExpr(left);
-        } else if (current == '.') {
+        // max(a, b)
+        left = expr(left);
 
-        }
-
+        // 句子解析结束
         if (isLineBreak()) {
             parser.next(); // eat '\n'
             return left;
         }
 
+        // expr1(...) ... || expr1.expr2 ...
+        left = statement(left);
+
         return left;
     }
-
 
     /**
      * 命令方式的函数调用
@@ -250,7 +243,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private boolean isLineBreak() {
-        return parser.current() == '\n' || parser.current() == ';';
+        return parser.current() == '\n' || parser.current() == ';' || !parser.hasNext();
     }
 
     /**
