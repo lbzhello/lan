@@ -154,7 +154,7 @@ public class LanInterpreter implements Interpreter {
     /**
      * 从头解析一个句子，即由表达式 {@link #expr()}，运算符 {@link #operatorExpr(Expression, String)}，
      * 命令 {@link #commandExpr(Expression)} 等组成的语句
-     *
+     * 语句结合顺序：expr -> operator -> command
      * @return
      */
     private Expression statement() {
