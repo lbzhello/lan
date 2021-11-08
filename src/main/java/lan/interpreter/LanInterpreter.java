@@ -13,6 +13,10 @@ import java.util.Set;
 /**
  * 语言解析器
  * 关键字通过额外的解析器解析，支持扩展
+ * expr = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
+ * operator = expr || expr op expr
+ * command = expr || expr operator operator || operator operator operator
+ * statement = operator || command
  */
 public class LanInterpreter implements Interpreter {
 
@@ -97,7 +101,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析一个原子表达式, 即最小结构的完整表达式
-     * e.g. (...) || {...} || [...] || "string" || 123 || symbol
+     * expr = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
      * @return
      */
     public Expression expr() {
@@ -155,6 +159,7 @@ public class LanInterpreter implements Interpreter {
      * 从头解析一个句子，即由表达式 {@link #expr()}，运算符 {@link #operatorExpr(Expression, String)}，
      * 命令 {@link #commandExpr(Expression)} 等组成的语句
      * 语句结合顺序：expr -> operator -> command
+     * statement = operator || command
      * @return
      */
     private Expression statement() {
@@ -213,7 +218,7 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        // expr1(...) ... || expr1.expr2 ...
+        // expr1(...)... || expr1.expr2...
         left = statement(left);
 
         return left;
@@ -221,7 +226,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 命令方式的函数调用
-     * e.g. max a b c
+     * command = expr || expr operator operator || operator operator operator
      * @return
      */
     private Expression commandExpr(Expression left) {
@@ -278,6 +283,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析 operator 或直接返回
+     * operator = expr || expr op expr
      * @param left
      * @return
      */
