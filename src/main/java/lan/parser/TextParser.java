@@ -137,12 +137,29 @@ public class TextParser implements CharIterator {
     }
 
     /**
+     * 判断当前字符是否为 c
+     * @param c
+     * @return
+     */
+    public boolean currentIs(char c) {
+        return current() == c;
+    }
+
+    /**
      * 判断字符是否分割符（空白，特殊字符）
      * @param c
      * @return
      */
     public boolean isDelimiter(char c) {
         return delimiters.contains(c) || Character.isWhitespace(c);
+    }
+
+    /**
+     * 判断当前字符是否分隔符
+     * @return
+     */
+    public boolean isDelimiter() {
+        return isDelimiter(current());
     }
 
     /**

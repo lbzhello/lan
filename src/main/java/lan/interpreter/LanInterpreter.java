@@ -1,6 +1,7 @@
 package lan.interpreter;
 
 import lan.ast.Expression;
+import lan.ast.impl.EvalExpression;
 import lan.base.Definition;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -13,9 +14,10 @@ import java.util.Set;
 /**
  * 语言解析器
  * 关键字通过额外的解析器解析，支持扩展
- * expr = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
- * operator = expr || expr op expr
- * command = expr || expr operator operator || operator operator operator
+ * word = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
+ * term = word || word word
+ * operator = term || term op term
+ * command = term || term operator operator || operator operator operator
  * statement = operator || command
  */
 public class LanInterpreter implements Interpreter {
@@ -100,11 +102,11 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 解析一个原子表达式, 即最小结构的完整表达式
+     * 字，原子表达式, 即最小结构的完整表达式
      * expr = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
      * @return
      */
-    public Expression expr() {
+    public Expression word() {
         char current = parser.current();
         if (current == ROUND_BRACKET_LEFT) { // (
 
@@ -128,26 +130,34 @@ public class LanInterpreter implements Interpreter {
             }
         } else if (parser.hasNext()) {
             parser.next(); // 去掉其他无用字符
-            return expr();
+            return word();
         }
 
         return Token.EOF;
     }
 
     /**
-     * 根据 left 继续向下解析一次
-     * 不包括运算符表达式 {@link #operatorExpr(Expression)} 和命令表达
-     * 式 {@link #commandExpr(Expression)}
+     * 解析词语，根据 left 继续向下解析一次
+     * 不包括运算符表达式 {@link #operator(Expression)} 和命令表达
+     * 式 {@link #command(Expression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
      */
-    private Expression expr(Expression left) {
+    private Expression term(Expression left) {
         char current = parser.current();
+        if (parser.skipBlankNotLineBreak()) {
+            // expr (...) // 命令调用
+            if (parser.currentIs('(') || parser.currentIs('[') || parser.currentIs('{')) {
+                return left;
+            }
+        }
         if (current == '(') { // 函数调用 expr(...)
-
+            Expression expression = roundBracketExpr();
+            // expr(...)(...)
+            return term(expression);
         } else if (current == ',') { // expr1, expr2...
             left = commaListExpr(left);
-            return operatorExpr(left);
+            return left;
         } else if (current == '.') {
 
         }
@@ -156,8 +166,8 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 从头解析一个句子，即由表达式 {@link #expr()}，运算符 {@link #operatorExpr(Expression, String)}，
-     * 命令 {@link #commandExpr(Expression)} 等组成的语句
+     * 从头解析一个句子，即由表达式 {@link #word()}，运算符 {@link #operatorExpr(Expression, String)}，
+     * 命令 {@link #command(Expression)} 等组成的语句
      * 语句结合顺序：expr -> operator -> command
      * statement = operator || command
      * @return
@@ -168,79 +178,82 @@ public class LanInterpreter implements Interpreter {
             return Token.EOF;
         }
 
-        Expression expr = expr();
-        return statement(expr);
+        Expression term = term(word());
+        return statement(term);
     }
 
     /**
      * 根据句子的开头，解析句子接下来的语句结构
      * 会吃掉行结束符
-     * e.g. left a b... || left + b...
-     * @param left
+     * e.g. head a b... || head + b...
+     * statement = operator || command
+     * @param head
      * @return
      */
-    private Expression statement(Expression left) {
-        // expr ... 表达式后面跟空格
-        if (parser.skipBlankNotLineBreak()) {
-            char current = parser.current();
-            if (isLineBreak()) {
-                parser.next(); // eat
-                return left;
-            }
-
-            // 运算符
-            if (!parser.isDelimiter(current)) {
-                String word = parser.nextWord();
-
-                // left +... 运算符
-                if (definition.isOperator(word)) {
-                    return operatorExpr(left, word);
-                }
-
-                // 函数调用 left param...
-                return commandExpr(left, word);
-            }
-
-            // expr (... 命令调用，注意中间由空格，无空格表示函数调用
-            if (current == '(' || current == '[' || current == '{') {
-                Expression commandExpr = commandExpr(left);
-                return commandExpr;
-            }
-
+    private Expression statement(Expression head) {
+        if (isLineBreak()) {
+            parser.next(); // eat
+            return head;
         }
 
-        // max(a, b)
-        left = expr(left);
+        if (!parser.isDelimiter()) {
+            Expression term = term(word());
+
+            // head +... 运算符
+            if (definition.isOperator(term)) {
+                return operator(head, term);
+            }
+
+            // 函数调用 head param...
+            return command(head, term);
+        }
+
+        Expression commandExpr = command(head);
 
         // 句子解析结束
         if (isLineBreak()) {
             parser.next(); // eat '\n'
-            return left;
         }
 
-        // expr1(...)... || expr1.expr2...
-        left = statement(left);
-
-        return left;
+        return commandExpr;
     }
 
     /**
      * 命令方式的函数调用
-     * command = expr || expr operator operator || operator operator operator
+     * command = term || term operator operator || operator operator operator
      * @return
      */
-    private Expression commandExpr(Expression left) {
-        return null;
+    private Expression command(Expression cmd) {
+        EvalExpression evalExpression = new EvalExpression();
+        evalExpression.add(cmd);
+        while (!isLineBreak()) {
+            Expression term = term(word());
+            Expression operator = operator(term);
+            evalExpression.add(operator);
+        }
+        return evalExpression;
     }
 
     /**
      *
-     * @param left
-     * @param nextWord 已经解析的下一个单词
+     * @param head
+     * @param term 已经解析的下一个词语
      * @return
      */
-    private Expression commandExpr(Expression left, String nextWord) {
+    private Expression command(Expression head, Expression term) {
+
         return null;
+    }
+
+    /**
+     * 解析命令参数
+     * operator
+     * @return
+     */
+    private Expression commandParam() {
+        Expression term = term(word());
+
+        return term;
     }
 
     /**
@@ -277,7 +290,7 @@ public class LanInterpreter implements Interpreter {
      * 解析运算符表达式
      * @return
      */
-    private Expression operatorExpr(Expression left, String op) {
+    private Expression operator(Expression left, Expression op) {
         return null;
     }
 
@@ -287,7 +300,7 @@ public class LanInterpreter implements Interpreter {
      * @param left
      * @return
      */
-    private Expression operatorExpr(Expression left) {
+    private Expression operator(Expression left) {
         return null;
     }
 }
