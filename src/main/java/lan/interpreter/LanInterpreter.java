@@ -197,15 +197,15 @@ public class LanInterpreter implements Interpreter {
         }
 
         if (!parser.isDelimiter()) {
-            Expression term = term(word());
+            Expression word = word();
 
             // head +... 运算符
-            if (definition.isOperator(term)) {
-                return operator(head, term);
+            if (definition.isOperator(word)) {
+                return operator(head, word);
             }
 
             // 函数调用 head param...
-            return command(head, term);
+            return command(head, word);
         }
 
         Expression commandExpr = command(head);
@@ -224,36 +224,49 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression command(Expression cmd) {
-        EvalExpression evalExpression = new EvalExpression();
-        evalExpression.add(cmd);
-        while (!isLineBreak()) {
-            Expression term = term(word());
-            Expression operator = operator(term);
-            evalExpression.add(operator);
+        if (isLineBreak()) {
+            return cmd;
         }
-        return evalExpression;
+        Expression word = word();
+        return command(cmd, word);
     }
 
     /**
      *
-     * @param head
-     * @param term 已经解析的下一个词语
+     * @param cmd
+     * @param word 已经解析的下一个单词
      * @return
      */
-    private Expression command(Expression head, Expression term) {
+    private Expression command(Expression cmd, Expression word) {
+        EvalExpression evalExpression = new EvalExpression();
+        evalExpression.add(cmd);
 
-        return null;
-    }
+        // 语句结束直接返回
+        if (isLineBreakSkipBlank()) {
+            evalExpression.add(word);
+            return evalExpression;
+        }
 
-    /**
-     * 解析命令参数
-     * operator
-     * @return
-     */
-    private Expression commandParam() {
-        Expression term = term(word());
+        // 解析参数
+        Expression nextWord = word;
+        while (!isLineBreak()) {
+            Expression term = term(nextWord);
 
-        return term;
+            if (isLineBreakSkipBlank()) {
+                evalExpression.add(term);
+                break;
+            }
+
+            nextWord = word();
+
+            if (definition.isOperator(nextWord)) { // // 运算符
+                Expression operator = operator(term, nextWord);
+                evalExpression.add(operator);
+            } else {
+                evalExpression.add(term);
+            }
+        }
+        return evalExpression;
     }
 
     /**
@@ -262,6 +275,15 @@ public class LanInterpreter implements Interpreter {
      */
     private boolean isLineBreak() {
         return parser.current() == '\n' || parser.current() == ';' || !parser.hasNext();
+    }
+
+    /**
+     * 跳过空格符后判断当前字符是否换行符
+     * @return
+     */
+    private boolean isLineBreakSkipBlank() {
+        parser.skipBlankNotLineBreak();
+        return isLineBreak();
     }
 
     /**
