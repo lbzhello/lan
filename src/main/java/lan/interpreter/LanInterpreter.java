@@ -107,6 +107,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     public Expression word() {
+        parser.skipBlank(); // 去掉空白字符
         char current = parser.current();
         if (current == ROUND_BRACKET_LEFT) { // (
 
@@ -120,7 +121,12 @@ public class LanInterpreter implements Interpreter {
 
         } else if (current == BACK_QUOTE) { // `
 
-        } else if (!parser.isDelimiter(current)) { // 数字，字面量
+        } else if (isLineBreak()) {
+            return Token.EOL;
+        } else if (parser.isDelimiter(current)) { // 间隔符
+            parser.next(); // 先去掉
+            return word();
+        } else if (parser.hasNext()) { // 数字，字面量等
             String token = parser.nextWord();
             // 关键字
             if (this.definition.isKeyWord(token)) {
@@ -128,9 +134,6 @@ public class LanInterpreter implements Interpreter {
                 Interpreter keywordInterpreter = getKeywordInterpreter(token);
                 // 调用
             }
-        } else if (parser.hasNext()) {
-            parser.next(); // 去掉其他无用字符
-            return word();
         }
 
         return Token.EOF;
@@ -144,13 +147,14 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression term(Expression left) {
-        char current = parser.current();
-        if (parser.skipBlankNotLineBreak()) {
+        if (parser.skipBlankNotLineBreak()) { // left ... 中间有空白字符
             // expr (...) // 命令调用
             if (parser.currentIs('(') || parser.currentIs('[') || parser.currentIs('{')) {
                 return left;
             }
+            return term(left);
         }
+        char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
             Expression expression = roundBracketExpr();
             // expr(...)(...)
@@ -166,24 +170,22 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 从头解析一个句子，即由表达式 {@link #word()}，运算符 {@link #operatorExpr(Expression, String)}，
+     * 从头解析一个句子，即由表达式 {@link #word()}，运算符 {@link #operator(Expression, Expression)}，
      * 命令 {@link #command(Expression)} 等组成的语句
      * 语句结合顺序：expr -> operator -> command
      * statement = operator || command
      * @return
      */
     private Expression statement() {
-        parser.skipBlank(); // 去掉空白字符
-        if (!parser.hasNext()) {
+        Expression term = term(word());
+        if (term == Token.EOF) { // 结束解析
             return Token.EOF;
         }
-
-        Expression term = term(word());
         return statement(term);
     }
 
     /**
-     * 根据句子的开头，解析句子接下来的语句结构
+     * 解析句子。根据句子开头，解析句子接下来的语句结构
      * 会吃掉行结束符
      * e.g. head a b... || head + b...
      * statement = operator || command
@@ -191,21 +193,21 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression statement(Expression head) {
-        if (isLineBreak()) {
+        if (isLineBreakSkipBlank()) {
             parser.next(); // eat
             return head;
         }
 
         if (!parser.isDelimiter()) {
-            Expression word = word();
+            Expression term = term(word());
 
             // head +... 运算符
-            if (definition.isOperator(word)) {
-                return operator(head, word);
+            if (definition.isOperator(term)) {
+                return operator(head, term);
             }
 
             // 函数调用 head param...
-            return command(head, word);
+            return command(head, term);
         }
 
         Expression commandExpr = command(head);
@@ -224,48 +226,50 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression command(Expression cmd) {
-        if (isLineBreak()) {
+        if (isLineBreakOrEndSkipBlank()) {
             return cmd;
         }
-        Expression word = word();
-        return command(cmd, word);
+        Expression term = term(word());
+        return command(cmd, term);
     }
 
     /**
      *
      * @param cmd
-     * @param word 已经解析的下一个单词
+     * @param term 已经解析的下一个词语
      * @return
      */
-    private Expression command(Expression cmd, Expression word) {
+    private Expression command(Expression cmd, Expression term) {
         EvalExpression evalExpression = new EvalExpression();
         evalExpression.add(cmd);
 
-        // 语句结束直接返回
-        if (isLineBreakSkipBlank()) {
-            evalExpression.add(word);
+        // cmd term 语句结束直接返回
+        if (isLineBreakOrEndSkipBlank()) {
+            evalExpression.add(term);
             return evalExpression;
         }
 
-        // 解析参数
-        Expression nextWord = word;
-        while (!isLineBreak()) {
-            Expression term = term(nextWord);
-
-            if (isLineBreakSkipBlank()) {
-                evalExpression.add(term);
+        // cmd term1 term2... 解析参数
+        Expression term1 = term;
+        do {
+            Expression term2 = term(word());
+            if (definition.isOperator(term2)) { // 运算符
+                Expression operator = operator(term1, term2);
+                evalExpression.add(operator);
+                if (isLineBreakOrEndSkipBlank()) { // cmd ... operator
+                    break;
+                }
+                term1 = term(word());
+            } else {
+                evalExpression.add(term1);
+                term1 = term2;
+            }
+            // cmd ... term1 term2
+            if (isLineBreakOrEndSkipBlank()) {
+                evalExpression.add(term1);
                 break;
             }
-
-            nextWord = word();
-
-            if (definition.isOperator(nextWord)) { // // 运算符
-                Expression operator = operator(term, nextWord);
-                evalExpression.add(operator);
-            } else {
-                evalExpression.add(term);
-            }
-        }
+        } while (parser.hasNext());
         return evalExpression;
     }
 
@@ -274,16 +278,33 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private boolean isLineBreak() {
-        return parser.current() == '\n' || parser.current() == ';' || !parser.hasNext();
+        return parser.current() == '\n' || parser.current() == ';';
     }
 
     /**
-     * 跳过空格符后判断当前字符是否换行符
+     * 是换行符或者文档结束
+     * @return
+     */
+    private boolean isLineBreakOrEnd() {
+        return isLineBreak() || !parser.hasNext();
+    }
+
+    /**
+     * 跳过空格符后，判断当前字符是否换行符
      * @return
      */
     private boolean isLineBreakSkipBlank() {
         parser.skipBlankNotLineBreak();
         return isLineBreak();
+    }
+
+    /**
+     * 跳过空格符后，判断当前字符是否换行符，或者结束符
+     * @return
+     */
+    private boolean isLineBreakOrEndSkipBlank() {
+        parser.skipBlankNotLineBreak();
+        return isLineBreakOrEnd();
     }
 
     /**
