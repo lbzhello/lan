@@ -274,6 +274,33 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 解析命令
+     * @param evalExpression
+     * @return
+     */
+    private Expression parseParam(EvalExpression evalExpression, Expression term) {
+        Expression nextTerm = term(word());
+        if (definition.isOperator(nextTerm)) { // 运算符
+            Expression operator = operator(term, nextTerm);
+            evalExpression.add(operator);
+            if (isLineBreakOrEndSkipBlank()) { // cmd ... operator
+                return evalExpression;
+            }
+            nextTerm = term(word());
+        } else {
+            evalExpression.add(term);
+        }
+
+        // cmd ... term nextTerm
+        if (isLineBreakOrEndSkipBlank()) {
+            evalExpression.add(nextTerm);
+            return evalExpression;
+        }
+
+        return parseParam(evalExpression, nextTerm);
+    }
+
+    /**
      * 判断语句是否结束
      * @return
      */
