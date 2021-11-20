@@ -249,36 +249,16 @@ public class LanInterpreter implements Interpreter {
             return evalExpression;
         }
 
-        // cmd term1 term2... 解析参数
-        Expression term1 = term;
-        do {
-            Expression term2 = term(word());
-            if (definition.isOperator(term2)) { // 运算符
-                Expression operator = operator(term1, term2);
-                evalExpression.add(operator);
-                if (isLineBreakOrEndSkipBlank()) { // cmd ... operator
-                    break;
-                }
-                term1 = term(word());
-            } else {
-                evalExpression.add(term1);
-                term1 = term2;
-            }
-            // cmd ... term1 term2
-            if (isLineBreakOrEndSkipBlank()) {
-                evalExpression.add(term1);
-                break;
-            }
-        } while (parser.hasNext());
-        return evalExpression;
+        // cmd term... 解析参数
+        return cmdParam(evalExpression, term);
     }
 
     /**
-     * 解析命令
+     * 解析命令参数
      * @param evalExpression
      * @return
      */
-    private Expression parseParam(EvalExpression evalExpression, Expression term) {
+    private Expression cmdParam(EvalExpression evalExpression, Expression term) {
         Expression nextTerm = term(word());
         if (definition.isOperator(nextTerm)) { // 运算符
             Expression operator = operator(term, nextTerm);
@@ -297,7 +277,7 @@ public class LanInterpreter implements Interpreter {
             return evalExpression;
         }
 
-        return parseParam(evalExpression, nextTerm);
+        return cmdParam(evalExpression, nextTerm);
     }
 
     /**
