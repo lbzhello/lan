@@ -1,7 +1,8 @@
 package lan.interpreter;
 
 import lan.ast.Expression;
-import lan.ast.impl.EvalExpression;
+import lan.ast.Operator;
+import lan.ast.impl.ListExpression;
 import lan.base.Definition;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -9,6 +10,7 @@ import lan.parser.Token;
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -226,7 +228,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression command(Expression cmd) {
-        if (isLineBreakOrEndSkipBlank()) {
+        if (isDelimiterOrEndSkipBlank()) {
             return cmd;
         }
         Expression term = term(word());
@@ -240,44 +242,45 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression command(Expression cmd, Expression term) {
-        EvalExpression evalExpression = new EvalExpression();
-        evalExpression.add(cmd);
+        ListExpression listExpression = new ListExpression();
+        listExpression.add(cmd);
 
         // cmd term 语句结束直接返回
-        if (isLineBreakOrEndSkipBlank()) {
-            evalExpression.add(term);
-            return evalExpression;
+        if (isDelimiterOrEndSkipBlank()) {
+            listExpression.add(term);
+            return listExpression;
         }
 
         // cmd term... 解析参数
-        return cmdParam(evalExpression, term);
+        return listExpr(listExpression, term);
     }
 
     /**
-     * 解析命令参数
-     * @param evalExpression
+     * 解析列表表达式，即空格分割的多个表达式
+     * term term term || term operator operator || operator operator operator
+     * @param listExpression
      * @return
      */
-    private Expression cmdParam(EvalExpression evalExpression, Expression term) {
+    private Expression listExpr(ListExpression listExpression, Expression term) {
         Expression nextTerm = term(word());
         if (definition.isOperator(nextTerm)) { // 运算符
             Expression operator = operator(term, nextTerm);
-            evalExpression.add(operator);
-            if (isLineBreakOrEndSkipBlank()) { // cmd ... operator
-                return evalExpression;
+            listExpression.add(operator);
+            if (isDelimiterOrEndSkipBlank()) { // cmd ... operator
+                return listExpression;
             }
             nextTerm = term(word());
         } else {
-            evalExpression.add(term);
+            listExpression.add(term);
         }
 
         // cmd ... term nextTerm
-        if (isLineBreakOrEndSkipBlank()) {
-            evalExpression.add(nextTerm);
-            return evalExpression;
+        if (isDelimiterOrEndSkipBlank()) {
+            listExpression.add(nextTerm);
+            return listExpression;
         }
 
-        return cmdParam(evalExpression, nextTerm);
+        return listExpr(listExpression, nextTerm);
     }
 
     /**
@@ -306,12 +309,12 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 跳过空格符后，判断当前字符是否换行符，或者结束符
+     * 跳过空格符后，判断当前字符是否间隔符
      * @return
      */
-    private boolean isLineBreakOrEndSkipBlank() {
+    private boolean isDelimiterOrEndSkipBlank() {
         parser.skipBlankNotLineBreak();
-        return isLineBreakOrEnd();
+        return parser.isDelimiter() || isLineBreakOrEnd();
     }
 
     /**
@@ -341,7 +344,79 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operator(Expression left, Expression op) {
-        return null;
+        if (isDelimiterOrEndSkipBlank()) {
+            return left;
+        }
+
+        Operator binary = definition.createOperator(String.valueOf(op));
+        Expression right = term(word());
+        if (isDelimiterOrEndSkipBlank()) { // left op right
+            binary.add(left);
+            binary.add(right);
+            return binary;
+        }
+
+        Expression op2 = term(word()); // left op right op2...
+        if (!definition.isOperator(op2)) {
+            throw new IllegalArgumentException("expr not operator");
+        }
+
+        int precedence = definition.comparePrecedence(op, op2);
+        if (precedence < 0) { // left op (right op2...
+            binary.add(left);
+            binary.add(operator(right, op2));
+            return binary;
+        } else { // (left op right) op2...
+            binary.add(left);
+            binary.add(right);
+            return operator(binary, op2);
+        }
+
+    }
+
+    /**
+     * operator 作为列表元素
+     * cmd operator term... 需要确认 term 不一定是运算符
+     * @param listExpression
+     * @param left
+     * @param op
+     * @return
+     */
+    private Expression operator(@Nullable ListExpression listExpression, Expression left, Expression op) {
+        if (isDelimiterOrEndSkipBlank()) {
+            return left;
+        }
+
+        Operator binary = definition.createOperator(String.valueOf(op));
+        Expression right = term(word());
+        if (isDelimiterOrEndSkipBlank()) { // left op right
+            binary.add(left);
+            binary.add(right);
+            return binary;
+        }
+
+        Expression op2 = term(word()); // left op right op2...
+        if (!definition.isOperator(op2)) {
+            if (Objects.isNull(listExpression)) {
+                throw new IllegalArgumentException("expr not operator");
+            }
+            // 放入列表
+            binary.add(left);
+            binary.add(right);
+            listExpression.add(binary);
+            return listExpr(listExpression, op2);
+        }
+
+        int precedence = definition.comparePrecedence(op, op2);
+        if (precedence < 0) { // left op (right op2...
+            binary.add(left);
+            binary.add(operator(listExpression, right, op2));
+            return binary;
+        } else { // (left op right) op2...
+            binary.add(left);
+            binary.add(right);
+            return operator(listExpression, binary, op2);
+        }
     }
 
     /**

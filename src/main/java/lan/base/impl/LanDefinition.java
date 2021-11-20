@@ -185,4 +185,9 @@ public class LanDefinition implements Definition {
     public boolean isOperator(Expression op) {
         return isOperator(String.valueOf(op));
     }
+
+    @Override
+    public int comparePrecedence(Expression op1, Expression op2) {
+        return 0;
+    }
 }

@@ -48,4 +48,6 @@ public interface Definition {
      * @return
      */
     Integer getPrecedence(String operatorName);
+
+    int comparePrecedence(Expression op1, Expression op2);
 }
