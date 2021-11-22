@@ -198,7 +198,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析句子。根据句子开头，解析句子接下来的语句结构
-     * 会吃掉行结束符
+     * 解析完成后吃掉行结束符
      * e.g. head a b... || head + b...
      * statement = operator || command
      * @param head
@@ -225,7 +225,7 @@ public class LanInterpreter implements Interpreter {
         Expression commandExpr = command(head);
 
         // 句子解析结束
-        if (isLineBreak()) {
+        if (isLineBreakSkipBlank()) {
             parser.next(); // eat '\n'
         }
 

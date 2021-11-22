@@ -3,49 +3,42 @@ package lan.ast.operator;
 import lan.ast.Expression;
 import lan.ast.Operator;
 import lan.ast.Value;
+import lan.ast.impl.ListExpression;
 import lan.ast.impl.NumberExpression;
 import lan.ast.impl.StringExpression;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * + 运算符
  * e.g. 3 + 2
  */
 public class PlusOperator extends AbstractOperator implements Operator {
+    /**
+     * 加法运算符的行为取决于第一个元素
+     * 第一个元素若是数字，表示数字相加
+     * 第一个元素若是字符串，表示字符串相加
+     * 第一个元素若是列表，表示向集合中添加元素，或者取两个列表的并集
+     * @return
+     */
     @Override
     public Expression eval() {
-        if (size() < 1) {
+        if (size() < 2) {
             return Value.NIL;
+        } else if (size() == 2) { // 只有一个操作数
+            return get(1).eval();
         }
 
-        boolean isString = false;
-        boolean isNumber = false;
-        boolean isArray = false;
+        Plus operand = null;
+        Expression first = get(1).eval();
 
-        List<Expression> exprList = new ArrayList<>();
-        Set<Expression> exprSet = new HashSet<>();
+        if (first instanceof StringExpression) { // 字符串和非 List 表达式相加都是字符串
 
-        for (int i = 1; i < size(); i++) {
-            Expression expr = get(i).eval();
-
-            exprList.add(expr);
-            exprSet.add(expr);
-
-            if (expr instanceof StringExpression) {
-                isString = true;
-            } else if (expr instanceof NumberExpression) {
-                isNumber = true;
-            }
-        }
-
-        // 字符串和任何表达式相加都是字符串
-        if (isString) {
+        } else if (first instanceof NumberExpression) {
+            NumberExpression number = (NumberExpression) first;
+            return number.plus(get(2));
+        } else if (first instanceof ListExpression) { // 取并集，或者将元素加入列表
 
         }
+
 
         return Value.NIL;
     }
