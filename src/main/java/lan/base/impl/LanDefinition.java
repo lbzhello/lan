@@ -80,12 +80,16 @@ public class LanDefinition implements Definition {
      */
     private static final int DEFAULT_PRECEDENCE = 0;
 
+    public LanDefinition() {
+        init();
+    }
+
     private void init() {
         // 关键字
         keywordSupplier.put(DEFINE, ExpressionFactory::define);
 
         // 运算符
-        operatorSupplier.put(COLON2, ExpressionFactory::plus);
+        operatorSupplier.put(PLUS, ExpressionFactory::plus);
 
         // 运算符优先级
         setPrecedence(ARROW, -1);

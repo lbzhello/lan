@@ -1,8 +1,12 @@
 package lan.interpreter;
 
+import cn.hutool.core.util.NumberUtil;
 import lan.ast.Expression;
 import lan.ast.Operator;
-import lan.ast.impl.ListExpression;
+import lan.ast.BaseExpression;
+import lan.ast.impl.EvalExpression;
+import lan.ast.impl.NumberExpression;
+import lan.ast.impl.SymbolExpression;
 import lan.base.Definition;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -135,7 +139,13 @@ public class LanInterpreter implements Interpreter {
                 // 交给对应的关键字解析器解析
                 Interpreter keywordInterpreter = getKeywordInterpreter(token);
                 // 调用
+                return null;
             }
+
+            if (NumberUtil.isNumber(token)) { //todo 无依赖
+                return new NumberExpression(token);
+            }
+            return new SymbolExpression(token);
         }
 
         return Token.EOF;
@@ -143,7 +153,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析词语，根据 left 继续向下解析一次
-     * 不包括运算符表达式 {@link #operator(Expression)} 和命令表达
+     * 不包括运算符表达式 {@link #operator} 和命令表达
      * 式 {@link #command(Expression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
@@ -178,7 +188,7 @@ public class LanInterpreter implements Interpreter {
      * statement = operator || command
      * @return
      */
-    private Expression statement() {
+    public Expression statement() {
         Expression term = term(word());
         if (term == Token.EOF) { // 结束解析
             return Token.EOF;
@@ -236,55 +246,55 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     *
+     * command = term || term operator operator || operator operator operator
      * @param cmd
      * @param term 已经解析的下一个词语
      * @return
      */
     private Expression command(Expression cmd, Expression term) {
-        ListExpression listExpression = new ListExpression();
-        listExpression.add(cmd);
+        BaseExpression baseExpression = new EvalExpression();
+        baseExpression.add(cmd);
 
         // cmd term 语句结束直接返回
         if (isDelimiterOrEndSkipBlank()) {
-            listExpression.add(term);
-            return listExpression;
+            baseExpression.add(term);
+            return baseExpression;
         }
 
         // cmd term... 解析参数
-        return listExpr(listExpression, term);
+        return spaceExpr(baseExpression, term);
     }
 
     /**
      * 解析列表表达式，即空格分割的多个表达式
      * term term term || term operator operator || operator operator operator
-     * @param list
+     * @param container 表达式容器
      * @return
      */
-    private Expression listExpr(ListExpression list, Expression term) {
+    private Expression spaceExpr(BaseExpression container, Expression term) {
         if (isDelimiterOrEndSkipBlank()) {
-            list.add(term);
+            container.add(term);
             return term;
         }
         Expression nextTerm = term(word());
         if (definition.isOperator(nextTerm)) { // 运算符
-            Expression operator = operator(list, term, nextTerm);
-            list.add(operator);
+            Expression operator = operator(container, term, nextTerm);
+            container.add(operator);
             if (isDelimiterOrEndSkipBlank()) { // cmd ... operator
-                return list;
+                return container;
             }
             nextTerm = term(word());
         } else {
-            list.add(term);
+            container.add(term);
         }
 
         // cmd ... term nextTerm
         if (isDelimiterOrEndSkipBlank()) {
-            list.add(nextTerm);
-            return list;
+            container.add(nextTerm);
+            return container;
         }
 
-        return listExpr(list, nextTerm);
+        return spaceExpr(container, nextTerm);
     }
 
     /**
@@ -354,17 +364,21 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析运算符表达式
-     * @param list 若不为 null 表示运算符在列表中；e.g. cmd operator term... 需要确认 term 不一定是运算符
+     * @param container 若不为 null 表示运算符在列表中；e.g. cmd operator term... 需要确认 term 不一定是运算符
      * @param left
      * @param op
      * @return
      */
-    private Expression operator(@Nullable ListExpression list, Expression left, Expression op) {
+    private Expression operator(@Nullable BaseExpression container, Expression left, Expression op) {
         if (isDelimiterOrEndSkipBlank()) {
             return left;
         }
 
         Operator binary = definition.createOperator(String.valueOf(op));
+
+        // 运算符放在开头
+        binary.add(op);
+
         Expression right = term(word());
         if (isDelimiterOrEndSkipBlank()) { // left op right
             binary.add(left);
@@ -374,25 +388,25 @@ public class LanInterpreter implements Interpreter {
 
         Expression op2 = term(word()); // left op right op2...
         if (!definition.isOperator(op2)) {
-            if (Objects.isNull(list)) {
+            if (Objects.isNull(container)) {
                 throw new IllegalArgumentException("expr not operator");
             }
             // left op right term... 运算符在列表中
             binary.add(left);
             binary.add(right);
-            list.add(binary);
-            return listExpr(list, op2);
+            container.add(binary);
+            return spaceExpr(container, op2);
         }
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...
             binary.add(left);
-            binary.add(operator(list, right, op2));
+            binary.add(operator(container, right, op2));
             return binary;
         } else { // (left op right) op2...
             binary.add(left);
             binary.add(right);
-            return operator(list, binary, op2);
+            return operator(container, binary, op2);
         }
     }
 

@@ -14,6 +14,11 @@ public interface Name extends Expression {
         }
 
         @Override
+        public void add(Expression operand) {
+
+        }
+
+        @Override
         public Expression eval() {
             return null;
         }

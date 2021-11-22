@@ -82,7 +82,7 @@ public abstract class AbstractContainer implements Container<Expression> {
         StringBuffer sb = new StringBuffer();
         if (!isEmpty()) {
             for (int i = 0; i < count; i++) {
-                sb.append(elementData[i] + " ");
+                sb.append(elementData[i]).append(" ");
             }
             sb.replace(sb.length()-1, sb.length(), "");
         }
