@@ -258,29 +258,33 @@ public class LanInterpreter implements Interpreter {
     /**
      * 解析列表表达式，即空格分割的多个表达式
      * term term term || term operator operator || operator operator operator
-     * @param listExpression
+     * @param list
      * @return
      */
-    private Expression listExpr(ListExpression listExpression, Expression term) {
+    private Expression listExpr(ListExpression list, Expression term) {
+        if (isDelimiterOrEndSkipBlank()) {
+            list.add(term);
+            return term;
+        }
         Expression nextTerm = term(word());
         if (definition.isOperator(nextTerm)) { // 运算符
-            Expression operator = operator(term, nextTerm);
-            listExpression.add(operator);
+            Expression operator = operator(list, term, nextTerm);
+            list.add(operator);
             if (isDelimiterOrEndSkipBlank()) { // cmd ... operator
-                return listExpression;
+                return list;
             }
             nextTerm = term(word());
         } else {
-            listExpression.add(term);
+            list.add(term);
         }
 
         // cmd ... term nextTerm
         if (isDelimiterOrEndSkipBlank()) {
-            listExpression.add(nextTerm);
-            return listExpression;
+            list.add(nextTerm);
+            return list;
         }
 
-        return listExpr(listExpression, nextTerm);
+        return listExpr(list, nextTerm);
     }
 
     /**
@@ -344,45 +348,18 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operator(Expression left, Expression op) {
-        if (isDelimiterOrEndSkipBlank()) {
-            return left;
-        }
-
-        Operator binary = definition.createOperator(String.valueOf(op));
-        Expression right = term(word());
-        if (isDelimiterOrEndSkipBlank()) { // left op right
-            binary.add(left);
-            binary.add(right);
-            return binary;
-        }
-
-        Expression op2 = term(word()); // left op right op2...
-        if (!definition.isOperator(op2)) {
-            throw new IllegalArgumentException("expr not operator");
-        }
-
-        int precedence = definition.comparePrecedence(op, op2);
-        if (precedence < 0) { // left op (right op2...
-            binary.add(left);
-            binary.add(operator(right, op2));
-            return binary;
-        } else { // (left op right) op2...
-            binary.add(left);
-            binary.add(right);
-            return operator(binary, op2);
-        }
+        return operator(null, left, op);
 
     }
 
     /**
-     * operator 作为列表元素
-     * cmd operator term... 需要确认 term 不一定是运算符
-     * @param listExpression
+     * 解析运算符表达式
+     * @param list 若不为 null 表示运算符在列表中；e.g. cmd operator term... 需要确认 term 不一定是运算符
      * @param left
      * @param op
      * @return
      */
-    private Expression operator(@Nullable ListExpression listExpression, Expression left, Expression op) {
+    private Expression operator(@Nullable ListExpression list, Expression left, Expression op) {
         if (isDelimiterOrEndSkipBlank()) {
             return left;
         }
@@ -397,35 +374,26 @@ public class LanInterpreter implements Interpreter {
 
         Expression op2 = term(word()); // left op right op2...
         if (!definition.isOperator(op2)) {
-            if (Objects.isNull(listExpression)) {
+            if (Objects.isNull(list)) {
                 throw new IllegalArgumentException("expr not operator");
             }
-            // 放入列表
+            // left op right term... 运算符在列表中
             binary.add(left);
             binary.add(right);
-            listExpression.add(binary);
-            return listExpr(listExpression, op2);
+            list.add(binary);
+            return listExpr(list, op2);
         }
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...
             binary.add(left);
-            binary.add(operator(listExpression, right, op2));
+            binary.add(operator(list, right, op2));
             return binary;
         } else { // (left op right) op2...
             binary.add(left);
             binary.add(right);
-            return operator(listExpression, binary, op2);
+            return operator(list, binary, op2);
         }
     }
 
-    /**
-     * 解析 operator 或直接返回
-     * operator = expr || expr op expr
-     * @param left
-     * @return
-     */
-    private Expression operator(Expression left) {
-        return null;
-    }
 }
