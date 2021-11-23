@@ -1,11 +1,11 @@
 package lan.ast.impl;
 
 import lan.ast.Expression;
-import lan.ast.Name;
+import lan.ast.Value;
 
 import java.util.Objects;
 
-public class SymbolExpression implements Name {
+public class SymbolExpression implements Value {
     private String value;
 
     public SymbolExpression(String value) {

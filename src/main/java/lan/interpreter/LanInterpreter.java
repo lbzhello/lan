@@ -2,9 +2,9 @@ package lan.interpreter;
 
 import cn.hutool.core.util.NumberUtil;
 import lan.ast.Expression;
-import lan.ast.Operator;
 import lan.ast.BaseExpression;
 import lan.ast.impl.EvalExpression;
+import lan.ast.impl.PointExpression;
 import lan.ast.impl.NumberExpression;
 import lan.ast.impl.SymbolExpression;
 import lan.base.Definition;
@@ -374,16 +374,22 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        Operator binary = definition.createOperator(String.valueOf(op));
+        // Operator binary = definition.createOperator(String.valueOf(op));
 
-        // 运算符放在开头
-        binary.add(op);
+        // 运算符等同函数调用
+        // left.op 调用类 left 中的函数 op
+        PointExpression point = new PointExpression();
+        point.add(left);
+        point.add(op);
+
+        // op 函数调用
+        EvalExpression eval = new EvalExpression();
+        eval.add(point); // left.op ...
 
         Expression right = term(word());
         if (isDelimiterOrEndSkipBlank()) { // left op right
-            binary.add(left);
-            binary.add(right);
-            return binary;
+            eval.add(right);
+            return eval;
         }
 
         Expression op2 = term(word()); // left op right op2...
@@ -392,21 +398,19 @@ public class LanInterpreter implements Interpreter {
                 throw new IllegalArgumentException("expr not operator");
             }
             // left op right term... 运算符在列表中
-            binary.add(left);
-            binary.add(right);
-            container.add(binary);
+            eval.add(right);
+
+            container.add(eval);
             return spaceExpr(container, op2);
         }
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...
-            binary.add(left);
-            binary.add(operator(container, right, op2));
-            return binary;
+            eval.add(operator(container, right, op2));
+            return eval;
         } else { // (left op right) op2...
-            binary.add(left);
-            binary.add(right);
-            return operator(container, binary, op2);
+            eval.add(right);
+            return operator(container, eval, op2);
         }
     }
 

@@ -1,7 +1,6 @@
 package lan.ast.impl;
 
 import lan.ast.Expression;
-import lan.ast.Name;
 import lan.ast.Value;
 import lan.ast.operator.Plus;
 
@@ -10,7 +9,7 @@ import java.math.BigDecimal;
 /**
  * 数字
  */
-public class NumberExpression implements Value, Name, Plus {
+public class NumberExpression extends ClassExpression implements Value, Plus {
     private BigDecimal value = BigDecimal.ZERO;
 
     public NumberExpression(String val) {
@@ -30,5 +29,10 @@ public class NumberExpression implements Value, Name, Plus {
 
     public BigDecimal getValue() {
         return this.value;
+    }
+
+    @Override
+    public String toString() {
+        return String.valueOf(value);
     }
 }

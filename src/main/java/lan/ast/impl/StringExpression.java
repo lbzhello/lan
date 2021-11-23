@@ -1,14 +1,13 @@
 package lan.ast.impl;
 
 import lan.ast.Value;
-import lan.ast.Name;
 
 import java.util.Objects;
 
 /**
  * 字符串
  */
-public class StringExpression implements Value, Name {
+public class StringExpression extends ClassExpression implements Value {
     private String value;
 
     public StringExpression(String value){
