@@ -3,19 +3,16 @@ package lan.interpreter;
 import cn.hutool.core.util.NumberUtil;
 import lan.ast.Expression;
 import lan.ast.BaseExpression;
-import lan.ast.impl.EvalExpression;
-import lan.ast.impl.PointExpression;
-import lan.ast.impl.NumberExpression;
-import lan.ast.impl.SymbolExpression;
+import lan.ast.expression.EvalExpression;
+import lan.ast.expression.PointExpression;
+import lan.ast.expression.NumberExpression;
+import lan.ast.expression.SymbolExpression;
 import lan.base.Definition;
 import lan.parser.TextParser;
 import lan.parser.Token;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 语言解析器
@@ -87,6 +84,13 @@ public class LanInterpreter implements Interpreter {
     private Definition definition;
 
     /**
+     * 解析栈，有时候需要解析下一个单词 {@link #term}才能确定是否返回;
+     * 比如 {@link #operator}, 需要判断下一个单词是否是运算符
+     * 可以将已经解析的下一个单词推入此栈中，供其他表达式获取
+     */
+    private Deque<Expression> termStack = new ArrayDeque<>();
+
+    /**
      * 关键字解析器
      */
     private Map<String, Interpreter> keywordInterpreter = new HashMap<>();
@@ -152,6 +156,21 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 获取一个单词
+     * term = word || word word
+     * foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
+     * @return
+     */
+    private Expression term() {
+        Expression poll = termStack.poll();
+        if (Objects.isNull(poll)) {
+            return term(word());
+        }
+
+        return poll;
+    }
+
+    /**
      * 解析词语，根据 left 继续向下解析一次
      * 不包括运算符表达式 {@link #operator} 和命令表达
      * 式 {@link #command(Expression)}
@@ -189,7 +208,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     public Expression statement() {
-        Expression term = term(word());
+        Expression term = term();
         if (term == Token.EOF) { // 结束解析
             return Token.EOF;
         }
@@ -211,9 +230,9 @@ public class LanInterpreter implements Interpreter {
         }
 
         if (!parser.isDelimiter()) {
-            Expression term = term(word());
+            Expression term = term();
 
-            // head +... 运算符
+            // head term... 运算符
             if (definition.isOperator(term)) {
                 return operator(head, term);
             }
@@ -241,7 +260,7 @@ public class LanInterpreter implements Interpreter {
         if (isDelimiterOrEndSkipBlank()) {
             return cmd;
         }
-        Expression term = term(word());
+        Expression term = term();
         return command(cmd, term);
     }
 
@@ -262,39 +281,47 @@ public class LanInterpreter implements Interpreter {
         }
 
         // cmd term... 解析参数
-        return spaceExpr(baseExpression, term);
+        List<Expression> params = new ArrayList<>();
+        baseExpression.addAll(listExpr(params, term));
+        return baseExpression;
     }
 
     /**
      * 解析列表表达式，即空格分割的多个表达式
      * term term term || term operator operator || operator operator operator
-     * @param container 表达式容器
+     * @param list 表达式容器
      * @return
      */
-    private Expression spaceExpr(BaseExpression container, Expression term) {
+    private List<Expression> listExpr(List<Expression> list, Expression term) {
         if (isDelimiterOrEndSkipBlank()) {
-            container.add(term);
-            return term;
+            list.add(term);
+            return list;
         }
-        Expression nextTerm = term(word());
-        if (definition.isOperator(nextTerm)) { // 运算符
-            Expression operator = operator(container, term, nextTerm);
-            container.add(operator);
-            if (isDelimiterOrEndSkipBlank()) { // cmd ... operator
-                return container;
+        Expression nextTerm = term(); // list term nextTerm...
+        if (definition.isOperator(nextTerm)) { // operator = term nextTerm... 运算符
+            Expression operator = operator(term, nextTerm);
+            list.add(operator); // [list operator]
+            if (isDelimiterOrEndSkipBlank()) {
+                // 运算符可能预取了下一个单词，这里加上
+                Expression poll = termStack.poll();
+                if (Objects.nonNull(poll)) {
+                    list.add(poll);
+                }
+                return list;
             }
-            nextTerm = term(word());
+            nextTerm = term(); // [list operator] nextTerm
         } else {
-            container.add(term);
+            list.add(term); // [list term] nextTerm
         }
 
-        // cmd ... term nextTerm
+        // list nextTerm
         if (isDelimiterOrEndSkipBlank()) {
-            container.add(nextTerm);
-            return container;
+            list.add(nextTerm);
+            return list;
         }
 
-        return spaceExpr(container, nextTerm);
+        // list nextTerm...
+        return listExpr(list, nextTerm);
     }
 
     /**
@@ -353,23 +380,14 @@ public class LanInterpreter implements Interpreter {
         return null;
     }
 
-    /**
-     * 解析运算符表达式
-     * @return
-     */
-    private Expression operator(Expression left, Expression op) {
-        return operator(null, left, op);
-
-    }
 
     /**
      * 解析运算符表达式
-     * @param container 若不为 null 表示运算符在列表中；e.g. cmd operator term... 需要确认 term 不一定是运算符
      * @param left
      * @param op
      * @return
      */
-    private Expression operator(@Nullable BaseExpression container, Expression left, Expression op) {
+    private Expression operator(Expression left, Expression op) {
         if (isDelimiterOrEndSkipBlank()) {
             return left;
         }
@@ -386,31 +404,31 @@ public class LanInterpreter implements Interpreter {
         EvalExpression eval = new EvalExpression();
         eval.add(point); // left.op ...
 
-        Expression right = term(word());
+        Expression right = term();
         if (isDelimiterOrEndSkipBlank()) { // left op right
             eval.add(right);
             return eval;
         }
 
-        Expression op2 = term(word()); // left op right op2...
+        Expression op2 = term(); // left op right op2...
+
         if (!definition.isOperator(op2)) {
-            if (Objects.isNull(container)) {
-                throw new IllegalArgumentException("expr not operator");
-            }
             // left op right term... 运算符在列表中
             eval.add(right);
 
-            container.add(eval);
-            return spaceExpr(container, op2);
+            termStack.push(op2);
+
+            // 返回运算符表达式 left op right
+            return eval;
         }
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...
-            eval.add(operator(container, right, op2));
+            eval.add(operator(right, op2));
             return eval;
         } else { // (left op right) op2...
             eval.add(right);
-            return operator(container, eval, op2);
+            return operator(eval, op2);
         }
     }
 

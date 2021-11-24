@@ -1,4 +1,4 @@
-package lan.ast.impl;
+package lan.ast.expression;
 
 import lan.ast.BaseExpression;
 

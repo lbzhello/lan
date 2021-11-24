@@ -1,6 +1,6 @@
 package lan.ast;
 
-import lan.ast.impl.StringExpression;
+import lan.ast.expression.StringExpression;
 import org.junit.jupiter.api.Test;
 
 public class ExpressionFactoryTest {

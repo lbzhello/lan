@@ -1,4 +1,4 @@
-package lan.ast.impl;
+package lan.ast.expression;
 
 import cn.hutool.core.util.ArrayUtil;
 import lan.ast.BaseExpression;

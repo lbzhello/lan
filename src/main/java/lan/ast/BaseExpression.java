@@ -2,6 +2,8 @@ package lan.ast;
 
 import lan.util.AbstractContainer;
 
+import java.util.List;
+
 /**
  * 表达式基类，提供基本容器功能，存放解析的代码流
  * e.g. expr1 expr2 expr3...
@@ -10,5 +12,9 @@ public abstract class BaseExpression extends AbstractContainer implements Expres
     @Override
     public Expression eval() {
         return this;
+    }
+
+    public void addAll(List<Expression> expressionList) {
+        add(expressionList.toArray(new Expression[0]));
     }
 }

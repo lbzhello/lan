@@ -1,8 +1,8 @@
 package lan.ast;
 
-import lan.ast.impl.NumberExpression;
-import lan.ast.impl.StringExpression;
-import lan.ast.impl.SymbolExpression;
+import lan.ast.expression.NumberExpression;
+import lan.ast.expression.StringExpression;
+import lan.ast.expression.SymbolExpression;
 import lan.ast.keyword.DefineKeyword;
 import lan.ast.operator.PlusOperator;
 

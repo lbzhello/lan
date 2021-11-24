@@ -4,7 +4,7 @@ import lan.ast.Expression;
 
 import java.util.Arrays;
 
-public abstract class AbstractContainer implements Container<Expression> {
+public class AbstractContainer implements Container<Expression> {
     protected static final Expression[] EMPTY_ELEMENT_DATA = {};
 
     private static final int DEFAULT_INITIAL_CAPACITY = 8;
@@ -87,16 +87,6 @@ public abstract class AbstractContainer implements Container<Expression> {
             sb.replace(sb.length()-1, sb.length(), "");
         }
         return sb.toString();
-    }
-
-    /**
-     * lisp表达式
-     * @param name
-     * @Param oprands
-     * @return
-     */
-    protected String show(String name, String oprands) {
-        return "(" + name + " " + oprands + ")";
     }
 
 }
