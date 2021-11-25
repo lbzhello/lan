@@ -300,7 +300,7 @@ public class LanInterpreter implements Interpreter {
         Expression nextTerm = term(); // list term nextTerm...
         if (definition.isOperator(nextTerm)) { // operator = term nextTerm... 运算符
             Expression operator = operator(term, nextTerm);
-            list.add(operator); // [list operator]
+            list.add(operator); // [list operator]...
             if (isDelimiterOrEndSkipBlank()) {
                 // 运算符可能预取了下一个单词，这里加上
                 Expression poll = termStack.poll();

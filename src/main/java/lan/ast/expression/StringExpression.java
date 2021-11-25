@@ -14,6 +14,10 @@ public class StringExpression extends ClassExpression implements Value {
         this.value = value;
     }
 
+    public String getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
         return Objects.isNull(value) ? "" : "\"" + value + "\"";

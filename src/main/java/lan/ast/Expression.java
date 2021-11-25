@@ -10,12 +10,26 @@ public interface Expression extends Serializable, Cloneable {
         return this;
     }
 
-    /**
-     * 查找表
-     * @param key
-     * @return
-     */
-    default Expression lookup(String key) {
-        return null;
+    Constant NIL = new Constant("nil");
+    Constant TRUE = new Constant("true");
+    Constant FALSE = new Constant("false");
+
+    // 常量值
+    class Constant implements Expression {
+        private Object value;
+
+        public Constant(Object value) {
+            this.value = value;
+        }
+
+        @Override
+        public Expression eval() {
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
     }
 }

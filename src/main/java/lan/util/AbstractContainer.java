@@ -65,7 +65,7 @@ public class AbstractContainer implements Container<Expression> {
     }
 
     @Override
-    public void add(Expression[] elements) {
+    public void addAll(Expression[] elements) {
         int len = count + elements.length;
         if (elements.length > free) {
             elementData = Arrays.copyOf(elementData, len);
@@ -75,6 +75,31 @@ public class AbstractContainer implements Container<Expression> {
             System.arraycopy(elements, 0, elementData, count, elements.length);
             count = len; free -= elements.length;
         }
+    }
+
+
+    /**
+     * 获取数组切片 [start, end)，左开右闭
+     * @param start 包括 start
+     * @param end 不包括 end
+     * @return
+     */
+    @Override
+    public Expression[] slice(int start, int end) {
+        int len = end - start;
+        Expression[] newExpressions = new Expression[len];
+        System.arraycopy(elementData, start, newExpressions, 0, len);
+        return newExpressions;
+    }
+
+    /**
+     * 获取数组切片 [start, end)，start 开始的所有元素
+     * @param start
+     * @return
+     */
+    @Override
+    public Expression[] slice(int start) {
+        return slice(start, count);
     }
 
     @Override

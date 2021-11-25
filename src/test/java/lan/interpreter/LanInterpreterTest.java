@@ -10,6 +10,15 @@ import java.util.Deque;
 
 public class LanInterpreterTest {
     @Test
+    public void plusTest() {
+        TextParser parser = TextParser.text("3 + 2");
+        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
+        Expression statement = lanInterpreter.statement();
+        Expression eval = statement.eval();
+        System.out.println(eval);
+    }
+
+    @Test
     public void cmdTest() {
         TextParser parser = TextParser.text("max 3 5 + a + 7 88 99");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);

@@ -15,6 +15,6 @@ public abstract class BaseExpression extends AbstractContainer implements Expres
     }
 
     public void addAll(List<Expression> expressionList) {
-        add(expressionList.toArray(new Expression[0]));
+        addAll(expressionList.toArray(new Expression[0]));
     }
 }
