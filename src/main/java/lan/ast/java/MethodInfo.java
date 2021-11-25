@@ -14,7 +14,7 @@ public interface MethodInfo extends Expression {
     MethodInfo bindTo(Object caller);
 
     /**
-     * 方法
+     * 调用方法
      * @param args
      * @return
      */

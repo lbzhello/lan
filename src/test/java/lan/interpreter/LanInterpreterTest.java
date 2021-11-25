@@ -11,7 +11,8 @@ import java.util.Deque;
 public class LanInterpreterTest {
     @Test
     public void plusTest() {
-        TextParser parser = TextParser.text("3 + 2");
+        // TextParser parser = TextParser.text("3 + 2");
+        TextParser parser = TextParser.text("\"hello\" + \"world\" + 2 + 5");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         Expression eval = statement.eval();

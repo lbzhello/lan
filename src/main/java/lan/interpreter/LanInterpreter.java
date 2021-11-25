@@ -3,10 +3,7 @@ package lan.interpreter;
 import cn.hutool.core.util.NumberUtil;
 import lan.ast.Expression;
 import lan.ast.BaseExpression;
-import lan.ast.expression.EvalExpression;
-import lan.ast.expression.PointExpression;
-import lan.ast.expression.NumberExpression;
-import lan.ast.expression.SymbolExpression;
+import lan.ast.expression.*;
 import lan.base.Definition;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -126,7 +123,7 @@ public class LanInterpreter implements Interpreter {
         } else if (current == CURLY_BRACKET_LEFT) { // [
 
         } else if (current == QUOTE_MARK_DOUBLE) { // "
-
+            return stringExpression();
         } else if (current == QUOTE_MARK_SINGLE) { // '
 
         } else if (current == BACK_QUOTE) { // `
@@ -212,7 +209,9 @@ public class LanInterpreter implements Interpreter {
         if (term == Token.EOF) { // 结束解析
             return Token.EOF;
         }
-        return statement(term);
+        Expression statement = statement(term);
+        skipBlankAndLineBreak();
+        return statement;
     }
 
     /**
@@ -350,6 +349,16 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 句子结束时调用，去掉行结束符 ';' '\n'
+     * @return
+     */
+    private void skipBlankAndLineBreak() {
+        if (isLineBreakSkipBlank()) {
+            parser.next();
+        }
+    }
+
+    /**
      * 跳过空格符后，判断当前字符是否间隔符
      * @return
      */
@@ -380,7 +389,6 @@ public class LanInterpreter implements Interpreter {
         return null;
     }
 
-
     /**
      * 解析运算符表达式
      * @param left
@@ -388,7 +396,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operator(Expression left, Expression op) {
-        if (isDelimiterOrEndSkipBlank()) {
+        if (isLineBreakSkipBlank()) {
             return left;
         }
 
@@ -432,4 +440,21 @@ public class LanInterpreter implements Interpreter {
         }
     }
 
+    /**
+     * 解析 String
+     * @return
+     */
+    private StringExpression stringExpression() {
+        parser.next(); // eat "
+        StringBuilder sb = new StringBuilder();
+        while (!parser.currentIs('"') && parser.hasNext()) {
+            sb.append(parser.current());
+            parser.next();
+        }
+
+        if (parser.currentIs('"')) {
+            parser.next(); // eat "
+        }
+        return new StringExpression(sb.toString());
+    }
 }

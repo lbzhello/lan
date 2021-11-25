@@ -4,7 +4,6 @@ import lan.ast.expression.NumberExpression;
 import lan.ast.expression.StringExpression;
 import lan.ast.expression.SymbolExpression;
 import lan.ast.keyword.DefineKeyword;
-import lan.ast.operator.PlusOperator;
 
 /**
  * 简单工厂
@@ -45,14 +44,6 @@ public class ExpressionFactory {
      */
     public static SymbolExpression symbol(String value) {
         return new SymbolExpression(value);
-    }
-
-    /**
-     * + 运算符
-     * @return
-     */
-    public static PlusOperator plus() {
-        return new PlusOperator();
     }
 
     /**

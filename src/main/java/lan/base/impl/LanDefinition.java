@@ -1,6 +1,9 @@
 package lan.base.impl;
 
-import lan.ast.*;
+import lan.ast.Expression;
+import lan.ast.ExpressionFactory;
+import lan.ast.Keyword;
+import lan.ast.Operator;
 import lan.base.Definition;
 
 import java.util.HashMap;
@@ -88,8 +91,8 @@ public class LanDefinition implements Definition {
         // 关键字
         keywordSupplier.put(DEFINE, ExpressionFactory::define);
 
-        // 运算符
-        operatorSupplier.put(PLUS, ExpressionFactory::plus);
+        // 运算符 todo 运算符通过方法实现，只是解析时行为不同
+        operatorSupplier.put(PLUS, null);
 
         // 运算符优先级
         setPrecedence(ARROW, -1);
