@@ -22,7 +22,6 @@ public class LanDefinition implements Definition {
     //--------- Binary -----------//
     public static final String COLON = ":";
     public static final String COLON2 = "::";
-    public static final String ARROW = "->";
     public static final String ASSIGN = "=";
     public static final String OR = "||";
     public static final String AND = "&&";
@@ -61,6 +60,8 @@ public class LanDefinition implements Definition {
 
     public static final String NEW = "new";
     public static final String IMPORT = "import";
+
+    public static final String ARROW = "->";
     /** 关键字 end **/
 
     /**

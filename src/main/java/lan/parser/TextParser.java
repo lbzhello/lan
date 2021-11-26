@@ -146,6 +146,15 @@ public class TextParser implements CharIterator {
     }
 
     /**
+     * 判断当前字符不是 c
+     * @param c
+     * @return
+     */
+    public boolean currentNot(char c) {
+        return !currentIs(c);
+    }
+
+    /**
      * 判断字符是否分割符（空白，特殊字符）
      * @param c
      * @return
@@ -205,17 +214,19 @@ public class TextParser implements CharIterator {
     }
 
     /**
-     * 跳过除了换行符外的空白字符，
-     * @return 是否跳过了空白字符
+     * 当前字符是否匹配
+     * @param cs
+     * @return
      */
-    public boolean skipBlankNotLineBreak() {
-        boolean isSkip = false;
-        while (Character.isWhitespace(current()) && current() != LINE_BREAK) {
-            next();
-            isSkip = true;
+    public boolean currentMatch(char... cs) {
+        char current = current();
+        for (char c : cs) {
+            if (current == c) {
+                return true;
+            }
         }
 
-        return isSkip;
+        return false;
     }
 
     /**

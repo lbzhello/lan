@@ -114,10 +114,10 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     public Expression word() {
-        parser.skipBlank(); // 去掉空白字符
+        parser.skipBlank(); // 去掉空白，换行字符
         char current = parser.current();
         if (current == ROUND_BRACKET_LEFT) { // (
-
+            return roundBracketExpr();
         } else if (current == SQUARE_BRACKET_LEFT) { // [
 
         } else if (current == CURLY_BRACKET_LEFT) { // [
@@ -175,7 +175,8 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression term(Expression left) {
-        if (parser.skipBlankNotLineBreak()) { // left ... 中间有空白字符
+        if (isBlank()) { // left ... 中间有空白字符
+            skipBlank();
             // expr (...) // 命令调用
             if (parser.currentIs('(') || parser.currentIs('[') || parser.currentIs('{')) {
                 return left;
@@ -211,6 +212,7 @@ public class LanInterpreter implements Interpreter {
         }
         Expression statement = statement(term);
         skipBlankAndLineBreak();
+        skipBlank('\n');
         return statement;
     }
 
@@ -281,26 +283,71 @@ public class LanInterpreter implements Interpreter {
 
         // cmd term... 解析参数
         List<Expression> params = new ArrayList<>();
-        baseExpression.addAll(listExpr(params, term));
+        baseExpression.addAll(spaceListExpr(params, term));
         return baseExpression;
     }
 
     /**
-     * 解析列表表达式，即空格分割的多个表达式
+     * 解析逗号分割的列表
+     * e.g. expr1, expr2, expr3...
+     * @return
+     */
+    private ListExpression commaListExpr(Expression left) {
+        if (isStatementEndSkipBlank() || parser.currentNot(',')) { // 解析完成
+            ListExpression list = new ListExpression();
+            list.add(left);
+            return list;
+        }
+
+        skipBlank(','); // eat ','
+
+        if (isStatementEnd()) { // left,
+            ListExpression list = new ListExpression();
+            list.add(left);
+            return list;
+        }
+
+        Expression term = term();
+        if (isStatementEndSkipBlank()) { // left, term
+            ListExpression list = commaListExpr(term);
+            list.add(left);
+            return list;
+        }
+
+        if (parser.currentIs(',')) { // left, term,...
+            ListExpression list = commaListExpr(term);
+            list.add(left);
+            return list;
+        }
+
+        Expression nextTerm = term(); // left, term nextTerm...
+        if (definition.isOperator(nextTerm)) {
+            Expression operator = operator(term, nextTerm); // left, operator
+            ListExpression list = commaListExpr(operator);
+            list.add(left);
+            return list;
+        } else {
+            throw new IllegalStateException("缺少行结束符！");
+        }
+
+    }
+
+    /**
+     * 解析空格分割的列表
      * term term term || term operator operator || operator operator operator
      * @param list 表达式容器
      * @return
      */
-    private List<Expression> listExpr(List<Expression> list, Expression term) {
-        if (isDelimiterOrEndSkipBlank()) {
-            list.add(term);
+    private List<Expression> spaceListExpr(List<Expression> list, Expression term) {
+        if (isStatementEndSkipBlank()) {
+            list.add(term); // [list term]
             return list;
         }
         Expression nextTerm = term(); // list term nextTerm...
         if (definition.isOperator(nextTerm)) { // operator = term nextTerm... 运算符
             Expression operator = operator(term, nextTerm);
             list.add(operator); // [list operator]...
-            if (isDelimiterOrEndSkipBlank()) {
+            if (isStatementEndSkipBlank()) {
                 // 运算符可能预取了下一个单词，这里加上
                 Expression poll = termStack.poll();
                 if (Objects.nonNull(poll)) {
@@ -308,23 +355,42 @@ public class LanInterpreter implements Interpreter {
                 }
                 return list;
             }
+            // 运算符可能预取了下一个单词
             nextTerm = term(); // [list operator] nextTerm
         } else {
             list.add(term); // [list term] nextTerm
         }
 
         // list nextTerm
-        if (isDelimiterOrEndSkipBlank()) {
+        if (isStatementEndSkipBlank()) {
             list.add(nextTerm);
             return list;
         }
 
         // list nextTerm...
-        return listExpr(list, nextTerm);
+        return spaceListExpr(list, nextTerm);
     }
 
     /**
-     * 判断语句是否结束
+     * 是否空白字符
+     * @return
+     */
+    private boolean isBlank() {
+        return Character.isWhitespace(parser.current()) && parser.currentNot('\n');
+    }
+
+    /**
+     * 跳过空格和 skipChars
+     * @param skipChars
+     */
+    private void skipBlank(char... skipChars) {
+        while (Character.isWhitespace(parser.current()) && parser.currentNot('\n') || parser.currentMatch(skipChars)) {
+            parser.next();
+        }
+    }
+
+    /**
+     * 是否结束换行符
      * @return
      */
     private boolean isLineBreak() {
@@ -340,22 +406,49 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 是否语句结束
+     * @return
+     */
+    private boolean isStatementEnd() {
+        return isLineBreakOrEnd() || parser.currentMatch(')', ']', '}');
+    }
+
+    /**
+     * 跳过空格后是否行结束
+     * @return
+     */
+    private boolean isStatementEndSkipBlank() {
+        skipBlank();
+        return isStatementEnd();
+    }
+
+    /**
      * 跳过空格符后，判断当前字符是否换行符
      * @return
      */
     private boolean isLineBreakSkipBlank() {
-        parser.skipBlankNotLineBreak();
+        skipBlank();
         return isLineBreak();
     }
 
     /**
-     * 句子结束时调用，去掉行结束符 ';' '\n'
+     * 句子结束时调用，去掉空白字符，行结束符 ';' '\n'
      * @return
      */
     private void skipBlankAndLineBreak() {
-        if (isLineBreakSkipBlank()) {
+        while (isLineBreakSkipBlank()) {
             parser.next();
         }
+    }
+
+    /**
+     * 跳过空白字符后(不包括换行符)，判断当前字符是否匹配 chars 中的一个
+     * @param chars
+     * @return
+     */
+    private boolean skipBlankAndCheck(char... chars) {
+        skipBlank();
+        return parser.currentMatch(chars);
     }
 
     /**
@@ -363,29 +456,24 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private boolean isDelimiterOrEndSkipBlank() {
-        parser.skipBlankNotLineBreak();
+        skipBlank();
         return parser.isDelimiter() || isLineBreakOrEnd();
     }
 
     /**
-     * 解析都好分割的列表
-     * e.g. expr1, expr2, expr3...
-     * @return
-     */
-    private Expression commaListExpr(Expression expr) {
-        parser.next(); // eat ','
-
-        return null;
-    }
-
-    /**
      * 解析括号表达式
-     * e.g. (a + b) || (max a b) || (a, b, c)
+     * (operator, operator, operator) 列表表达式
+     * (cmd operator operator) 命令调用
+     * e.g. (max a b) || (a + b, b(), c)
      * @return
      */
     private Expression roundBracketExpr() {
         parser.next(); // eat '('
+        while (parser.currentNot(')')) {
 
+
+            parser.next();
+        }
         return null;
     }
 
@@ -413,7 +501,7 @@ public class LanInterpreter implements Interpreter {
         eval.add(point); // left.op ...
 
         Expression right = term();
-        if (isDelimiterOrEndSkipBlank()) { // left op right
+        if (isStatementEndSkipBlank()) { // left op right
             eval.add(right);
             return eval;
         }
