@@ -10,6 +10,14 @@ import java.util.Deque;
 
 public class LanInterpreterTest {
     @Test
+    public void commaListTest() {
+        TextParser parser = TextParser.text("hello, world, again, 123");
+        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
+        Expression statement = lanInterpreter.statement();
+        System.out.println();
+    }
+
+    @Test
     public void listTest() {
         // TextParser parser = TextParser.text("3 + 2");
         TextParser parser = TextParser.text("cmd a, b, 2 + 3, c, 4 + 5");

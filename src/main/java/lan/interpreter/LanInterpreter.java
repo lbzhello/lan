@@ -1,8 +1,8 @@
 package lan.interpreter;
 
 import cn.hutool.core.util.NumberUtil;
-import lan.ast.Expression;
 import lan.ast.BaseExpression;
+import lan.ast.Expression;
 import lan.ast.expression.*;
 import lan.base.Definition;
 import lan.parser.TextParser;
@@ -50,6 +50,8 @@ public class LanInterpreter implements Interpreter {
 
     public static char BACK_QUOTE = '`';
 
+    public static final char ASSIGN = '=';
+
     public Set<Character> delimiters = Set.of(
             COMMA,
             SEMICOLON,
@@ -67,7 +69,8 @@ public class LanInterpreter implements Interpreter {
             SLASH_RIGHT,
             QUOTE_MARK_DOUBLE,
             QUOTE_MARK_SINGLE,
-            BACK_QUOTE
+            BACK_QUOTE,
+            ASSIGN
     );
 
     /**
@@ -188,10 +191,13 @@ public class LanInterpreter implements Interpreter {
             Expression expression = roundBracketExpr();
             // expr(...)(...)
             return term(expression);
-        } else if (current == ',') { // expr1, expr2...
-            left = commaListExpr(left);
-            return left;
+        } else if (current == '[') { // expr1, expr2...
+
+        } else if (current == '{') {
+
         } else if (current == '.') {
+
+        } else if (current == ':') {
 
         }
 
@@ -240,6 +246,11 @@ public class LanInterpreter implements Interpreter {
 
             // 函数调用 head param...
             return command(head, term);
+        }
+
+        // left =...
+        if (parser.currentIs('=')) {
+            return null;
         }
 
         Expression commandExpr = command(head);
