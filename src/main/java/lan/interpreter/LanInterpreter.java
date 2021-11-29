@@ -248,11 +248,36 @@ public class LanInterpreter implements Interpreter {
             return command(head, term);
         }
 
-        // left =...
+        // left =... 赋值表达式 left = statement
         if (parser.currentIs('=')) {
             return null;
         }
 
+        // left,... 逗号表达式 left, term, term
+        if (parser.currentIs(',')) {
+            ListExpression comma = commaListExpr(head);
+            if (skipBlankAndCheck('=')) { // comma =... 逗号赋值 comma = statement
+                parser.next();
+                if (parser.currentIs('=')) { // comma ==... 运算符
+                    parser.next();
+                    return operator(comma, new SymbolExpression("=="));
+                }
+                skipBlank('\n'); // 跳过空白和换行
+                if (isStatementEnd()) { // comma =
+                    return comma;
+                }
+
+                Expression statement = statement(); // comma = statement
+                AssignExpression assign = new AssignExpression();
+                assign.add(comma);
+                assign.add(statement);
+                return assign;
+            }
+
+            return comma;
+        }
+
+        // head (... 命令表达式
         Expression commandExpr = command(head);
 
         // 句子解析结束
