@@ -208,7 +208,7 @@ public class LanInterpreter implements Interpreter {
      * 从头解析一个句子，即由表达式 {@link #word()}，运算符 {@link #operator(Expression, Expression)}，
      * 命令 {@link #command(Expression)} 等组成的语句
      * 语句结合顺序：expr -> operator -> command
-     * statement = operator || command
+     * operator || command || term, term, term || statement = statement
      * @return
      */
     public Expression statement() {
@@ -226,12 +226,12 @@ public class LanInterpreter implements Interpreter {
      * 解析句子。根据句子开头，解析句子接下来的语句结构
      * 解析完成后吃掉行结束符
      * e.g. head a b... || head + b...
-     * statement = operator || command
+     * operator || command || term, term, term || statement = statement
      * @param head
      * @return
      */
     private Expression statement(Expression head) {
-        if (isLineBreakSkipBlank()) {
+        if (isStatementEndSkipBlank()) {
             parser.next(); // eat
             return head;
         }
@@ -249,29 +249,15 @@ public class LanInterpreter implements Interpreter {
         }
 
         // left =... 赋值表达式 left = statement
-        if (parser.currentIs('=')) {
-            return null;
+        if (parser.currentIs('=')) { // comma =... 逗号赋值 comma = statement
+            return assignExpression(head);
         }
 
         // left,... 逗号表达式 left, term, term
         if (parser.currentIs(',')) {
             ListExpression comma = commaListExpr(head);
             if (skipBlankAndCheck('=')) { // comma =... 逗号赋值 comma = statement
-                parser.next();
-                if (parser.currentIs('=')) { // comma ==... 运算符
-                    parser.next();
-                    return operator(comma, new SymbolExpression("=="));
-                }
-                skipBlank('\n'); // 跳过空白和换行
-                if (isStatementEnd()) { // comma =
-                    return comma;
-                }
-
-                Expression statement = statement(); // comma = statement
-                AssignExpression assign = new AssignExpression();
-                assign.add(comma);
-                assign.add(statement);
-                return assign;
+                return assignExpression(comma);
             }
 
             return comma;
@@ -286,6 +272,30 @@ public class LanInterpreter implements Interpreter {
         }
 
         return commandExpr;
+    }
+
+    /**
+     * 赋值表达式
+     * left = statement
+     * @param left
+     * @return
+     */
+    private Expression assignExpression(Expression left) {
+        parser.next();
+        if (parser.currentIs('=')) { // comma ==... 运算符
+            parser.next();
+            return operator(left, new SymbolExpression("=="));
+        }
+        skipBlank('\n'); // 跳过空白和换行
+        if (isStatementEnd()) { // comma =
+            return left;
+        }
+
+        Expression statement = statement(); // comma = statement
+        AssignExpression assign = new AssignExpression();
+        assign.add(left);
+        assign.add(statement);
+        return assign;
     }
 
     /**
@@ -325,7 +335,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析逗号分割的列表
-     * e.g. expr1, expr2, expr3...
+     * e.g. term, term, term...
      * @return
      */
     private ListExpression commaListExpr(Expression left) {
@@ -335,7 +345,9 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
-        skipBlank(','); // eat ','
+        parser.next(); // eat ','
+
+        skipBlank('\n');
 
         if (isStatementEnd()) { // left,
             ListExpression list = new ListExpression();
@@ -343,29 +355,11 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
+        // left, term...
         Expression term = term();
-        if (isStatementEndSkipBlank()) { // left, term
-            ListExpression list = commaListExpr(term);
-            list.add(left);
-            return list;
-        }
-
-        if (parser.currentIs(',')) { // left, term,...
-            ListExpression list = commaListExpr(term);
-            list.add(left);
-            return list;
-        }
-
-        Expression nextTerm = term(); // left, term nextTerm...
-        if (definition.isOperator(nextTerm)) {
-            Expression operator = operator(term, nextTerm); // left, operator
-            ListExpression list = commaListExpr(operator);
-            list.add(left);
-            return list;
-        } else {
-            throw new IllegalStateException("缺少行结束符！");
-        }
-
+        ListExpression list = commaListExpr(term);
+        list.add(left);
+        return list;
     }
 
     /**
