@@ -33,4 +33,6 @@ public interface Container<T> {
      * @return
      */
     Expression[] slice(int start);
+
+    void reverse();
 }

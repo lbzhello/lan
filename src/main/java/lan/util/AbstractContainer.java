@@ -114,4 +114,20 @@ public class AbstractContainer implements Container<Expression> {
         return sb.toString();
     }
 
+    /**
+     * 元素倒叙
+     */
+    @Override
+    public void reverse() {
+        int start = 0;
+        int end = count - 1;
+        int half = count / 2;
+        for (int i = 0; i < half; i++) {
+            Expression tmp = elementData[start];
+            elementData[start] = elementData[end];
+            elementData[end] = tmp;
+            start++;
+            end--;
+        }
+    }
 }

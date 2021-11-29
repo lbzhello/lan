@@ -11,7 +11,7 @@ import java.util.Deque;
 public class LanInterpreterTest {
     @Test
     public void commaListTest() {
-        TextParser parser = TextParser.text("hello, world, 123, 456 = a, b = c, d");
+        TextParser parser = TextParser.text("hello, world, 123, 456 ,= a, b = c, d");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         System.out.println();

@@ -339,7 +339,18 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private ListExpression commaListExpr(Expression left) {
-        if (isStatementEndSkipBlank() || parser.currentNot(',')) { // 解析完成
+        ListExpression comma = commaListExpr0(left);
+        comma.reverse();
+        return comma;
+    }
+
+    /**
+     * 解析逗号分割的列表 - 元素倒叙
+     * e.g. term, term, term...
+     * @return
+     */
+    private ListExpression commaListExpr0(Expression left) {
+        if (parser.currentNot(',')) { // 解析完成
             ListExpression list = new ListExpression();
             list.add(left);
             return list;
@@ -349,7 +360,7 @@ public class LanInterpreter implements Interpreter {
 
         skipBlank('\n');
 
-        if (isStatementEnd()) { // left,
+        if (isStatementEnd() || parser.currentIs('=')) { // left,
             ListExpression list = new ListExpression();
             list.add(left);
             return list;
@@ -357,7 +368,8 @@ public class LanInterpreter implements Interpreter {
 
         // left, term...
         Expression term = term();
-        ListExpression list = commaListExpr(term);
+        skipBlank();
+        ListExpression list = commaListExpr0(term);
         list.add(left);
         return list;
     }
