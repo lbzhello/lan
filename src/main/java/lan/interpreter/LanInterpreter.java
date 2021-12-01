@@ -255,9 +255,9 @@ public class LanInterpreter implements Interpreter {
         // left,... 逗号表达式 left, operator, operator
         if (parser.currentIs(',')) {
             ListExpression comma = commaListExpr(head);
-            if (skipBlankAndCheck('=')) { // comma =... 逗号赋值 comma = statement
-                return assignExpression(comma);
-            }
+//            if (skipBlankAndCheck('=')) { // comma =... 逗号赋值 comma = statement
+//                return assignExpression(comma);
+//            }
 
             return comma;
         }
@@ -290,10 +290,14 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        Expression statement = operatorOrReturn(term(), true); // comma = statement
+        Expression expr = operatorOrReturn(term(), true); // left = expr
+        skipBlank();
+        if (parser.currentIs('=')) { // left = expr =...
+            expr = assignExpression(expr); // left = (expr =...
+        }
         AssignExpression assign = new AssignExpression();
         assign.add(left);
-        assign.add(statement);
+        assign.add(expr);
         return assign;
     }
 
@@ -429,32 +433,20 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
-        Expression nextTerm = term(); // list term nextTerm...
-        if (definition.isOperator(nextTerm)) { // operator = term nextTerm... 运算符
-            Expression operator = operator(term, nextTerm);
-            list.add(operator); // [list operator]...
-            if (isStatementEndSkipBlank()) {
-                // 运算符可能预取了下一个单词，这里加上
-                Expression poll = termStack.poll();
-                if (Objects.nonNull(poll)) {
-                    list.add(poll);
-                }
-                return list;
-            }
-            // 运算符可能预取了下一个单词
-            nextTerm = term(); // [list operator] nextTerm
-        } else {
-            list.add(term); // [list term] nextTerm
-        }
+        Expression operatorOrReturn = operatorOrReturn(term, true);
+        list.add(operatorOrReturn);
 
-        // list nextTerm
         if (isStatementEndSkipBlank()) {
-            list.add(nextTerm);
+            // 运算符可能预取了下一个单词，这里加上
+            Expression poll = termStack.poll();
+            if (Objects.nonNull(poll)) {
+                list.add(poll);
+            }
             return list;
         }
 
-        // list nextTerm...
-        return spaceListExpr(list, nextTerm);
+        return spaceListExpr(list, term());
+
     }
 
     /**
@@ -590,6 +582,17 @@ public class LanInterpreter implements Interpreter {
         if (isStatementEndSkipBlank() || parser.currentIs(',')) { // left op right
             eval.add(right);
             return eval;
+        }
+
+        if (parser.currentIs('=')) { // left op right =...
+            parser.next();
+            if (!parser.currentIs('=')) { // (left op right) = ... 赋值表达式
+                parser.previous(); // 回退 '='
+                eval.add(right);
+                return eval;
+            }
+
+            termStack.push(new SymbolExpression("==")); // left op right == ...
         }
 
         Expression op2 = term(); // left op right op2...

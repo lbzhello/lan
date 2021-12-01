@@ -10,8 +10,16 @@ import java.util.Deque;
 
 public class LanInterpreterTest {
     @Test
+    public void opTest() {
+        TextParser parser = TextParser.text("a = 3 + 2 = 5 = 6 + 7");
+        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
+        Expression statement = lanInterpreter.statement();
+        System.out.println();
+    }
+
+    @Test
     public void commaListAddTest() {
-        TextParser parser = TextParser.text("hello, world + 2");
+        TextParser parser = TextParser.text("cmd hello, world + 2");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         System.out.println();
@@ -19,7 +27,7 @@ public class LanInterpreterTest {
 
     @Test
     public void commaListTest() {
-        TextParser parser = TextParser.text("3, c=4 + 5, 6 = 5 + 8");
+        TextParser parser = TextParser.text("3, b = 5 + 8 = 3 + 2, 4 + 6");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         System.out.println();
@@ -28,7 +36,7 @@ public class LanInterpreterTest {
     @Test
     public void listTest() {
         // TextParser parser = TextParser.text("3 + 2");
-        TextParser parser = TextParser.text("cmd a b 2 + 3 c 4 + 5");
+        TextParser parser = TextParser.text("cmd a b 2 + 3 c = 4 + 5");
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         System.out.println();
