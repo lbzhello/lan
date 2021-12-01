@@ -217,8 +217,7 @@ public class LanInterpreter implements Interpreter {
             return Token.EOF;
         }
         Expression statement = statement(term);
-        skipBlankAndLineBreak();
-        skipBlank('\n');
+        skipBlank('\n', ';');
         return statement;
     }
 
@@ -253,7 +252,7 @@ public class LanInterpreter implements Interpreter {
             return assignExpression(head);
         }
 
-        // left,... 逗号表达式 left, term, term
+        // left,... 逗号表达式 left, operator, operator
         if (parser.currentIs(',')) {
             ListExpression comma = commaListExpr(head);
             if (skipBlankAndCheck('=')) { // comma =... 逗号赋值 comma = statement
@@ -291,7 +290,7 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        Expression statement = statement(); // comma = statement
+        Expression statement = operatorOrReturn(term(), true); // comma = statement
         AssignExpression assign = new AssignExpression();
         assign.add(left);
         assign.add(statement);
@@ -300,7 +299,8 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 命令方式的函数调用
-     * command = term || term operator operator || operator operator operator
+     * 支持逗号分割参数
+     * command = term || term operator operator || operator operator operator || term operator, operator, operator
      * @return
      */
     private Expression command(Expression cmd) {
@@ -322,7 +322,7 @@ public class LanInterpreter implements Interpreter {
         baseExpression.add(cmd);
 
         // cmd term 语句结束直接返回
-        if (isDelimiterOrEndSkipBlank()) {
+        if (isStatementEndSkipBlank()) {
             baseExpression.add(term);
             return baseExpression;
         }
@@ -335,7 +335,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析逗号分割的列表
-     * e.g. term, term, term...
+     * e.g. operator, operator, operator = operator,...
      * @return
      */
     private ListExpression commaListExpr(Expression left) {
@@ -346,7 +346,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析逗号分割的列表 - 元素倒叙
-     * e.g. term, term, term...
+     * e.g. operator, operator, operator...
      * @return
      */
     private ListExpression commaListExpr0(Expression left) {
@@ -360,18 +360,61 @@ public class LanInterpreter implements Interpreter {
 
         skipBlank('\n');
 
-        if (isStatementEnd() || parser.currentIs('=')) { // left,
+        if (isStatementEnd()) { // left,
             ListExpression list = new ListExpression();
             list.add(left);
             return list;
         }
 
+        if (parser.currentMatch('=', ':')) { // left, = || left, :
+            throw new IllegalStateException("语法错误");
+        }
+
         // left, term...
-        Expression term = term();
+        Expression expr = operatorOrReturn(term(), false);
         skipBlank();
-        ListExpression list = commaListExpr0(term);
+        ListExpression list = commaListExpr0(expr);
         list.add(left);
         return list;
+    }
+
+    /**
+     * 解析运算符，赋值表达式，或者直接返回
+     * @param left
+     * @param prefetch 是否支持预取，即 operator 后面是否可以跟表达式
+     * @return
+     */
+    private Expression operatorOrReturn(Expression left, boolean prefetch) {
+        if (isStatementEndSkipBlank()) {
+            return left;
+        }
+
+        if (parser.currentIs(',')) { // left,
+            return left;
+        }
+
+        if (parser.currentIs('=')) { // left =...
+            Expression assignExpression = assignExpression(left);
+            return assignExpression;
+        }
+
+        Expression term = term();
+        if (definition.isOperator(term)) { // left term...
+            Expression operator = operator(left, term);
+            if (!prefetch && Objects.nonNull(termStack.peek())) {
+                throw new IllegalStateException("语法错误，缺少表达式结束符号");
+            }
+
+            return operator;
+        }
+
+        if (prefetch) {
+            // 支持预取，放入栈中
+            termStack.push(term);
+            return left;
+        }
+
+        throw new IllegalStateException("语法错误，缺少表达式结束符号");
     }
 
     /**
@@ -385,6 +428,7 @@ public class LanInterpreter implements Interpreter {
             list.add(term); // [list term]
             return list;
         }
+
         Expression nextTerm = term(); // list term nextTerm...
         if (definition.isOperator(nextTerm)) { // operator = term nextTerm... 运算符
             Expression operator = operator(term, nextTerm);
@@ -526,7 +570,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operator(Expression left, Expression op) {
-        if (isLineBreakSkipBlank()) {
+        if (isStatementEndSkipBlank() || parser.currentIs(',')) {
             return left;
         }
 
@@ -543,7 +587,7 @@ public class LanInterpreter implements Interpreter {
         eval.add(point); // left.op ...
 
         Expression right = term();
-        if (isStatementEndSkipBlank()) { // left op right
+        if (isStatementEndSkipBlank() || parser.currentIs(',')) { // left op right
             eval.add(right);
             return eval;
         }
