@@ -5,6 +5,7 @@ import lan.ast.BaseExpression;
 import lan.ast.Expression;
 import lan.ast.expression.*;
 import lan.base.Definition;
+import lan.base.impl.LanDefinition;
 import lan.exception.ParseException;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -339,7 +340,7 @@ public class LanInterpreter implements Interpreter {
 
         // cmd term... 解析参数
         List<Expression> params = new ArrayList<>();
-        baseExpression.addAll(spaceListExpr(params, term));
+        baseExpression.addAll(commandParamExpr(params, term));
         return baseExpression;
     }
 
@@ -432,12 +433,12 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 解析空格分割的列表
+     * 解析命令列表
      * term term term || term operator operator || operator operator operator
      * @param list 表达式容器
      * @return
      */
-    private List<Expression> spaceListExpr(List<Expression> list, Expression term) {
+    private List<Expression> commandParamExpr(List<Expression> list, Expression term) {
         if (isStatementEndSkipBlank()) {
             list.add(term); // [list term]
             return list;
@@ -455,7 +456,7 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
-        return spaceListExpr(list, term());
+        return commandParamExpr(list, term());
 
     }
 
