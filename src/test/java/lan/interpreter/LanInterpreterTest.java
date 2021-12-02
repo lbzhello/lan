@@ -8,9 +8,21 @@ public class LanInterpreterTest {
     private static final Logger logger = LoggerFactory.getLogger(LanInterpreterTest.class);
 
     @Test
+    public void squareBracketTest() {
+        logger.debug("列表测试");
+        ReplEngine.printExpr("[foo, bar hello + world 3 + 2]");
+    }
+
+    @Test
     public void roundBracketTest() {
         logger.debug("括号表达式测试");
-        ReplEngine.printExpr("(cmd p1 = 5 + 6 7 9 + 8)");
+        ReplEngine.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
+
+        ReplEngine.printExpr("(foo, bar = 3 + 2, 5)");
+
+        ReplEngine.printExpr("(,)");
+        ReplEngine.printExpr("(,a)");
+        ReplEngine.printExpr("(a,)");
     }
 
     @Test
@@ -22,13 +34,13 @@ public class LanInterpreterTest {
     @Test
     public void commandTest() {
         logger.debug("命令表达式测试");
-        ReplEngine.printExpr("cmd a b 2 + 3 c = 4 + 5");
+        ReplEngine.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
     }
 
     @Test
     public void operatorTest() {
         logger.debug("运算符测试");
-        ReplEngine.printResult("\"hello\" + \"world\" + 2 + 5");
+        ReplEngine.printResult("\"hello\" + \"world\" + \n 2 + 5");
 
         ReplEngine.printResult("123 + 456 + 789");
     }

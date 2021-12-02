@@ -139,8 +139,8 @@ public class LanInterpreter implements Interpreter {
         if (current == ROUND_BRACKET_LEFT) { // (
             return roundBracketExpr();
         } else if (current == SQUARE_BRACKET_LEFT) { // [
-
-        } else if (current == CURLY_BRACKET_LEFT) { // [
+            return squareBracketExpr();
+        } else if (current == CURLY_BRACKET_LEFT) { // {
 
         } else if (current == QUOTE_MARK_DOUBLE) { // "
             return stringExpression();
@@ -378,7 +378,7 @@ public class LanInterpreter implements Interpreter {
         }
 
         if (parser.currentMatch('=', ':')) { // left, = || left, :
-            throw new IllegalStateException("语法错误");
+            throw new ParseException("语法错误");
         }
 
         // left, term...
@@ -520,6 +520,57 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 解析 [...] 表达式
+     * [foo, bar, 123]
+     * [1 2 3 4]
+     * [foo, 1 + 2 233]
+     * @return
+     */
+    private Expression squareBracketExpr() {
+        parser.next();
+
+        ListExpression list = squareBracketExpr0();
+
+        if (parser.currentIs(']')) {
+            parser.next();
+        } else {
+            throw new ParseException("列表解析错误，缺少 ]");
+        }
+
+        list.reverse();
+        return list;
+    }
+
+    /**
+     * 解析 [...] 表达式
+     * [foo, bar, 123]
+     * [1 2 3 4]
+     * [foo, 1 + 2 233]
+     * @return
+     */
+    private ListExpression squareBracketExpr0() {
+        skipBlank(',', '\n');
+
+
+        if (parser.currentIs(']') || !parser.hasNext()) { // []
+            ListExpression list = new ListExpression();
+            Expression pop = pop();
+            if (Objects.nonNull(pop)) {
+                list.add(pop);
+            }
+            return list;
+        }
+
+        Expression expr = operatorOrReturn(term(), true);
+
+        ListExpression list = squareBracketExpr0();
+
+        list.add(expr);
+
+        return list;
+    }
+
+    /**
      * 解析括号表达式
      * (operator, operator, operator) 列表表达式
      * (cmd operator operator) 命令调用
@@ -616,7 +667,8 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression operator(Expression left, Expression op) {
-        if (isStatementEndSkipBlank() || parser.currentIs(',')) {
+        skipBlank('\n'); // 运算符支持换行
+        if (isStatementEnd() || parser.currentIs(',')) {
             return left;
         }
 
