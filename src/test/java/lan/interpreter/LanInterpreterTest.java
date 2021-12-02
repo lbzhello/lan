@@ -1,70 +1,36 @@
 package lan.interpreter;
 
-import lan.ast.Expression;
-import lan.base.impl.LanDefinition;
-import lan.parser.TextParser;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayDeque;
-import java.util.Deque;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LanInterpreterTest {
+    private static final Logger logger = LoggerFactory.getLogger(LanInterpreterTest.class);
+
     @Test
-    public void opTest() {
-        TextParser parser = TextParser.text("a = 3 + 2 = 5 = 6 + 7");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        System.out.println();
+    public void roundBracketTest() {
+        logger.debug("括号表达式测试");
+        ReplEngine.printExpr("(cmd p1 = 5 + 6 7 9 + 8)");
     }
 
     @Test
-    public void commaListAddTest() {
-        TextParser parser = TextParser.text("cmd hello, world + 2");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        System.out.println();
+    public void assignTest() {
+        logger.debug("赋值表达式测试");
+        ReplEngine.printExpr("a = 3 + 2 = 5 = 6 + 7");
     }
 
     @Test
-    public void commaListTest() {
-        TextParser parser = TextParser.text("3, b = 5 + 8 = 3 + 2, 4 + 6");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        System.out.println();
+    public void commandTest() {
+        logger.debug("命令表达式测试");
+        ReplEngine.printExpr("cmd a b 2 + 3 c = 4 + 5");
     }
 
     @Test
-    public void listTest() {
-        // TextParser parser = TextParser.text("3 + 2");
-        TextParser parser = TextParser.text("cmd a b 2 + 3 c = 4 + 5");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        System.out.println();
-    }
+    public void operatorTest() {
+        logger.debug("运算符测试");
+        ReplEngine.printResult("\"hello\" + \"world\" + 2 + 5");
 
-    @Test
-    public void plusTest() {
-        // TextParser parser = TextParser.text("3 + 2");
-        TextParser parser = TextParser.text("\"hello\" + \"world\" + 2 + 5");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        Expression eval = statement.eval();
-        System.out.println(eval);
-    }
-
-    @Test
-    public void cmdTest() {
-        TextParser parser = TextParser.text("max 3 5 + a + 7 88 99");
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
-        System.out.println();
-    }
-
-    @Test
-    public void dequeTest() {
-        Deque<String> stack = new ArrayDeque<>();
-        String pop = stack.pop();
-        System.out.println();
+        ReplEngine.printResult("123 + 456 + 789");
     }
 
 }

@@ -11,6 +11,12 @@ import lan.ast.java.MethodInfo;
  */
 public class EvalExpression extends BaseExpression {
 
+    public EvalExpression(Expression... exprs) {
+        for (Expression expr : exprs) {
+            add(expr);
+        }
+    }
+
     @Override
     public Expression eval() {
         if (isEmpty()) {
