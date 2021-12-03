@@ -10,7 +10,7 @@ public class LanInterpreterTest {
     @Test
     public void squareBracketTest() {
         logger.debug("列表测试");
-        ReplEngine.printExpr("[foo, bar hello + world 3 + 2]");
+        ReplEngine.printExpr("[foo, bar hello + world 3 + 2 5]");
     }
 
     @Test

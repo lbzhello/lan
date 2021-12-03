@@ -114,6 +114,14 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
+     * 查看栈里是否存在表达式
+     * @return
+     */
+    private boolean peek() {
+        return termStack.peek() != null;
+    }
+
+    /**
      * 表达式出栈
      * @return
      */
@@ -210,7 +218,8 @@ public class LanInterpreter implements Interpreter {
             // expr(...)(...)
             return term(expression);
         } else if (current == '[') { // expr1, expr2...
-
+            Expression expression = squareBracketExpr();
+            return term(expression);
         } else if (current == '{') {
 
         } else if (current == '.') {
@@ -227,29 +236,12 @@ public class LanInterpreter implements Interpreter {
      * 命令 {@link #command(Expression)} 等组成的语句
      * 语句结合顺序：expr -> operator -> command
      * operator || command || term, term, term || statement = statement
+     * e.g.
+     * head a b... || head + b...
      * @return
      */
     public Expression statement() {
-        Expression term = term();
-        if (term == Token.EOF) { // 结束解析
-            return Token.EOF;
-        }
-        Expression statement = statement(term);
-        skipBlank('\n', ';');
-        return statement;
-    }
-
-    /**
-     * 解析句子。根据句子开头，解析句子接下来的语句结构
-     * 解析完成后吃掉行结束符
-     * operator || command || term, term, term || statement = statement
-     * e.g.
-     * head a b... || head + b...
-     * @param head
-     * @return
-     */
-    private Expression statement(Expression head) {
-        head = operatorOrReturn(head, true);
+        Expression head = operatorOrReturn(term());
 
         if (isStatementEndSkipBlank()) {
             Expression pop = pop();
@@ -268,6 +260,7 @@ public class LanInterpreter implements Interpreter {
             parser.next(); // eat '\n'
         }
 
+        skipBlank('\n', ';');
         return commandExpr;
     }
 
@@ -289,7 +282,7 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        Expression expr = operatorOrReturn(term(), true); // left = expr
+        Expression expr = operatorOrReturn(term()); // left = expr
         skipBlank();
         if (parser.currentIs('=')) { // left = expr =...
             expr = assignExpression(expr); // left = (expr =...
@@ -312,23 +305,13 @@ public class LanInterpreter implements Interpreter {
      */
     private Expression command(Expression cmd) {
         if (isStatementEndSkipBlank()) {
+            if (peek()) { // cmd pop
+                return new EvalExpression(cmd, pop());
+            }
             return cmd;
         }
         Expression term = term();
-        return command(cmd, term);
-    }
 
-    /**
-     * command = term || term operator operator || operator operator operator
-     * e.g.
-     * cmd
-     * cmd p1 p2
-     * cmd p1 + p2 p3 = 3 + 2 p4
-     * @param cmd
-     * @param term 已经解析的下一个词语
-     * @return
-     */
-    private Expression command(Expression cmd, Expression term) {
         BaseExpression baseExpression = new EvalExpression();
         baseExpression.add(cmd);
 
@@ -342,6 +325,34 @@ public class LanInterpreter implements Interpreter {
         List<Expression> params = new ArrayList<>();
         baseExpression.addAll(commandParamExpr(params, term));
         return baseExpression;
+    }
+
+    /**
+     * 解析命令列表
+     * term term term || term operator operator || operator operator operator
+     * @param list 表达式容器
+     * @return
+     */
+    private List<Expression> commandParamExpr(List<Expression> list, Expression term) {
+        if (isStatementEndSkipBlank()) {
+            list.add(term); // [list term]
+            return list;
+        }
+
+        Expression operatorOrReturn = operatorOrReturn(term);
+        list.add(operatorOrReturn);
+
+        if (isStatementEndSkipBlank()) {
+            // 运算符可能预取了下一个单词，这里加上
+            Expression pop = pop();
+            if (Objects.nonNull(pop)) {
+                list.add(pop);
+            }
+            return list;
+        }
+
+        return commandParamExpr(list, term());
+
     }
 
     /**
@@ -383,7 +394,10 @@ public class LanInterpreter implements Interpreter {
         }
 
         // left, term...
-        Expression expr = operatorOrReturn(term(), false);
+        Expression expr = operatorOrReturn(term());
+        if (peek()) {
+            throw new ParseException("表达式解析错误，缺少 ','");
+        }
         skipBlank();
         ListExpression list = commaListExpr0(expr);
         list.add(left);
@@ -396,10 +410,9 @@ public class LanInterpreter implements Interpreter {
      * expr1 + expr2
      * expr = expr1 + expr2 = expr3 + expr4
      * @param left
-     * @param prefetch 是否支持预取，即 operator 后面是否可以跟表达式
      * @return
      */
-    private Expression operatorOrReturn(Expression left, boolean prefetch) {
+    private Expression operatorOrReturn(Expression left) {
         if (isStatementEndSkipBlank()) {
             return left;
         }
@@ -415,49 +428,12 @@ public class LanInterpreter implements Interpreter {
 
         Expression term = term();
         if (definition.isOperator(term)) { // left term...
-            Expression operator = operator(left, term);
-            if (!prefetch && Objects.nonNull(termStack.peek())) {
-                throw new IllegalStateException("语法错误，缺少表达式结束符号");
-            }
-
-            return operator;
+            return operator(left, term);
         }
 
-        if (prefetch) {
-            // 支持预取，放入栈中
-            push(term);
-            return left;
-        }
-
-        throw new IllegalStateException("语法错误，缺少表达式结束符号");
-    }
-
-    /**
-     * 解析命令列表
-     * term term term || term operator operator || operator operator operator
-     * @param list 表达式容器
-     * @return
-     */
-    private List<Expression> commandParamExpr(List<Expression> list, Expression term) {
-        if (isStatementEndSkipBlank()) {
-            list.add(term); // [list term]
-            return list;
-        }
-
-        Expression operatorOrReturn = operatorOrReturn(term, true);
-        list.add(operatorOrReturn);
-
-        if (isStatementEndSkipBlank()) {
-            // 运算符可能预取了下一个单词，这里加上
-            Expression pop = pop();
-            if (Objects.nonNull(pop)) {
-                list.add(pop);
-            }
-            return list;
-        }
-
-        return commandParamExpr(list, term());
-
+        // 支持预取，放入栈中
+        push(term);
+        return left;
     }
 
     /**
@@ -562,7 +538,7 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
-        Expression expr = operatorOrReturn(term(), true);
+        Expression expr = operatorOrReturn(term());
 
         ListExpression list = squareBracketExpr0();
 
@@ -600,16 +576,15 @@ public class LanInterpreter implements Interpreter {
         }
 
         // (expr...
-        Expression expr = operatorOrReturn(term(), true);
+        Expression expr = operatorOrReturn(term());
 
         skipBlank('\n');
 
         // (expr...)
         if (parser.currentIs(')')) {
-            Expression pop = pop();
-            if (Objects.nonNull(pop)) { // (expr pop)
+            if (peek()) { // (expr peek)
                 parser.next(); // eat ')'
-                return command(expr, pop);
+                return command(expr);
             }
 
             parser.next(); // eat ')'
@@ -640,7 +615,7 @@ public class LanInterpreter implements Interpreter {
         // (expr param...
         EvalExpression eval = new EvalExpression(expr);
         while (!parser.currentIs(')') && parser.hasNext()) {
-            Expression param = operatorOrReturn(term(), true);
+            Expression param = operatorOrReturn(term());
             eval.add(param);
             skipBlank('\n');
             if (parser.currentMatch(',', ';', ']', '}')) {
