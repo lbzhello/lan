@@ -35,6 +35,7 @@ public class LanInterpreterTest {
     public void commandTest() {
         logger.debug("命令表达式测试");
         ReplEngine.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
+        ReplEngine.printExpr("cmd a");
     }
 
     @Test

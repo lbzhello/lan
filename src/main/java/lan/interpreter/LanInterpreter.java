@@ -1,11 +1,9 @@
 package lan.interpreter;
 
 import cn.hutool.core.util.NumberUtil;
-import lan.ast.BaseExpression;
 import lan.ast.Expression;
 import lan.ast.expression.*;
 import lan.base.Definition;
-import lan.base.impl.LanDefinition;
 import lan.exception.ParseException;
 import lan.parser.TextParser;
 import lan.parser.Token;
@@ -241,7 +239,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     public Expression statement() {
-        Expression head = operatorOrReturn(term());
+        Expression head = operator();
 
         if (isStatementEndSkipBlank()) {
             Expression pop = pop();
@@ -282,7 +280,7 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        Expression expr = operatorOrReturn(term()); // left = expr
+        Expression expr = operator(); // left = expr
         skipBlank();
         if (parser.currentIs('=')) { // left = expr =...
             expr = assignExpression(expr); // left = (expr =...
@@ -310,49 +308,28 @@ public class LanInterpreter implements Interpreter {
             }
             return cmd;
         }
-        Expression term = term();
 
-        BaseExpression baseExpression = new EvalExpression();
-        baseExpression.add(cmd);
-
-        // cmd term 语句结束直接返回
-        if (isStatementEndSkipBlank()) {
-            baseExpression.add(term);
-            return baseExpression;
-        }
-
-        // cmd term... 解析参数
-        List<Expression> params = new ArrayList<>();
-        baseExpression.addAll(commandParamExpr(params, term));
-        return baseExpression;
+        // 解析命令参数
+        EvalExpression eval = commandParam();
+        eval.add(cmd);
+        eval.reverse();
+        return eval;
     }
 
-    /**
-     * 解析命令列表
-     * term term term || term operator operator || operator operator operator
-     * @param list 表达式容器
-     * @return
-     */
-    private List<Expression> commandParamExpr(List<Expression> list, Expression term) {
-        if (isStatementEndSkipBlank()) {
-            list.add(term); // [list term]
-            return list;
-        }
-
-        Expression operatorOrReturn = operatorOrReturn(term);
-        list.add(operatorOrReturn);
-
-        if (isStatementEndSkipBlank()) {
-            // 运算符可能预取了下一个单词，这里加上
-            Expression pop = pop();
-            if (Objects.nonNull(pop)) {
-                list.add(pop);
+    private EvalExpression commandParam() {
+        if (isStatementEndSkipBlank() || parser.currentIs(',')) {
+            EvalExpression eval = new EvalExpression();
+            if (peek()) {
+                eval.add(pop());
             }
-            return list;
+            return eval;
         }
 
-        return commandParamExpr(list, term());
-
+        // 解析下一个表达式参数
+        Expression expression = operator();
+        EvalExpression eval = commandParam();
+        eval.add(expression);
+        return eval;
     }
 
     /**
@@ -394,7 +371,7 @@ public class LanInterpreter implements Interpreter {
         }
 
         // left, term...
-        Expression expr = operatorOrReturn(term());
+        Expression expr = operator();
         if (peek()) {
             throw new ParseException("表达式解析错误，缺少 ','");
         }
@@ -405,14 +382,14 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 解析运算符，赋值表达式，或者直接返回
+     * 解析单词，运算符
      * expr
      * expr1 + expr2
      * expr = expr1 + expr2 = expr3 + expr4
-     * @param left
      * @return
      */
-    private Expression operatorOrReturn(Expression left) {
+    private Expression operator() {
+        Expression left = term();
         if (isStatementEndSkipBlank()) {
             return left;
         }
@@ -422,8 +399,7 @@ public class LanInterpreter implements Interpreter {
         }
 
         if (parser.currentIs('=')) { // left =...
-            Expression assignExpression = assignExpression(left);
-            return assignExpression;
+            return assignExpression(left);
         }
 
         Expression term = term();
@@ -538,7 +514,7 @@ public class LanInterpreter implements Interpreter {
             return list;
         }
 
-        Expression expr = operatorOrReturn(term());
+        Expression expr = operator();
 
         ListExpression list = squareBracketExpr0();
 
@@ -572,11 +548,11 @@ public class LanInterpreter implements Interpreter {
                 parser.next();
                 return new ListExpression();
             }
-            // todo
+            // todo (,a) = a ?
         }
 
         // (expr...
-        Expression expr = operatorOrReturn(term());
+        Expression expr = operator();
 
         skipBlank('\n');
 
@@ -615,7 +591,7 @@ public class LanInterpreter implements Interpreter {
         // (expr param...
         EvalExpression eval = new EvalExpression(expr);
         while (!parser.currentIs(')') && parser.hasNext()) {
-            Expression param = operatorOrReturn(term());
+            Expression param = operator();
             eval.add(param);
             skipBlank('\n');
             if (parser.currentMatch(',', ';', ']', '}')) {
