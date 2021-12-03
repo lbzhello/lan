@@ -299,6 +299,7 @@ public class LanInterpreter implements Interpreter {
      * cmd
      * cmd p1 p2
      * cmd p1 + p2 p3 = 3 + 2 p4
+     * cmd p1 + p2, p3, p4 = 3 + 2 支持逗号分割
      * @return
      */
     private Expression command(Expression cmd) {
@@ -310,14 +311,23 @@ public class LanInterpreter implements Interpreter {
         }
 
         // 解析命令参数
-        EvalExpression eval = commandParam();
-        eval.add(cmd);
-        eval.reverse();
-        return eval;
+        EvalExpression param = commandParam();
+        param.add(cmd);
+        param.reverse();
+        return param;
     }
 
+    /**
+     * 命令参数，递归，结果倒叙
+     * @return
+     */
     private EvalExpression commandParam() {
-        if (isStatementEndSkipBlank() || parser.currentIs(',')) {
+        skipBlank();
+        if (parser.currentIs(',')) { // param1, param2 支持逗号分割
+            skipBlank(',', '\n'); // ',' 后面可以接换行
+        }
+
+        if (isStatementEnd()) {
             EvalExpression eval = new EvalExpression();
             if (peek()) {
                 eval.add(pop());
@@ -327,9 +337,9 @@ public class LanInterpreter implements Interpreter {
 
         // 解析下一个表达式参数
         Expression expression = operator();
-        EvalExpression eval = commandParam();
-        eval.add(expression);
-        return eval;
+        EvalExpression param = commandParam();
+        param.add(expression);
+        return param;
     }
 
     /**
@@ -571,14 +581,27 @@ public class LanInterpreter implements Interpreter {
 
         // (expr...,...
         if (parser.currentIs(',')) {
-            Expression pop = pop();
-            if (Objects.nonNull(pop)) { // expr pop,...
+            if (peek()) { // expr pop,...
                 throw new ParseException("括号表达式解析错误，多余的符号：','");
             }
 
             // (expr,...
-            ListExpression list = commaListExpr(expr);
-            skipBlank('\n');
+//            ListExpression list = commaListExpr(expr);
+            ListExpression list = new ListExpression(expr);
+            while (parser.currentIs(',')) {
+                skipBlank(',', '\n');
+                if (parser.currentIs(')')) { // (expr,)
+                    parser.next();
+                    return list;
+                }
+                Expression operator = operator();
+                if (peek()) {
+                    throw new ParseException("括号表达式解析错误，缺少 ','");
+                }
+
+                list.add(operator);
+                skipBlank('\n');
+            }
             if (parser.currentIs(')')) {
                 parser.next();
             } else {

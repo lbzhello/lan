@@ -16,13 +16,14 @@ public class LanInterpreterTest {
     @Test
     public void roundBracketTest() {
         logger.debug("括号表达式测试");
+        ReplEngine.printExpr("(foo, bar = 3 + 2\n, 5)");
+
         ReplEngine.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
 
-        ReplEngine.printExpr("(foo, bar = 3 + 2, 5)");
-
+        ReplEngine.printExpr("(a, b\n, ,\n,c, d)");
         ReplEngine.printExpr("(,)");
-        ReplEngine.printExpr("(,a)");
         ReplEngine.printExpr("(a,)");
+        ReplEngine.printExpr("(,a)");
     }
 
     @Test
@@ -36,6 +37,7 @@ public class LanInterpreterTest {
         logger.debug("命令表达式测试");
         ReplEngine.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
         ReplEngine.printExpr("cmd a");
+        ReplEngine.printExpr("cmd a b, \n 3 + 2, d");
     }
 
     @Test
