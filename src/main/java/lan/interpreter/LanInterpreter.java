@@ -541,7 +541,6 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression roundBracketExpr() {
-
         parser.next(); // eat '('
         skipBlank('\n');
 
@@ -553,12 +552,10 @@ public class LanInterpreter implements Interpreter {
 
         // (,...
         if (parser.currentIs(',')) {
-            skipBlank(',', '\n');
-            if (parser.currentIs(')')) { // ( , )
-                parser.next();
-                return new ListExpression();
-            }
-            // todo (,a) = a ?
+            ListExpression list = roundBracketParam();
+            list.reverse();
+            parser.next(); // eat ')'
+            return list;
         }
 
         // (expr...
@@ -566,73 +563,87 @@ public class LanInterpreter implements Interpreter {
 
         skipBlank('\n');
 
-        // (expr...)
-        if (parser.currentIs(')')) {
-            if (peek()) { // (expr peek)
-                parser.next(); // eat ')'
-                return command(expr);
-            }
-
-            parser.next(); // eat ')'
-
-            // (expr)
-            return expr;
-        }
-
         // (expr...,...
         if (parser.currentIs(',')) {
-            if (peek()) { // expr pop,...
-                throw new ParseException("括号表达式解析错误，多余的符号：','");
+            if (peek()) { // (expr pop,...
+                throw new ParseException("命令表达式解析错误，多余的符号：','");
             }
 
             // (expr,...
-//            ListExpression list = commaListExpr(expr);
-            ListExpression list = new ListExpression(expr);
-            while (parser.currentIs(',')) {
-                skipBlank(',', '\n');
-                if (parser.currentIs(')')) { // (expr,)
-                    parser.next();
-                    return list;
-                }
-                Expression operator = operator();
-                if (peek()) {
-                    throw new ParseException("括号表达式解析错误，缺少 ','");
-                }
-
-                list.add(operator);
-                skipBlank('\n');
-            }
-            if (parser.currentIs(')')) {
-                parser.next();
-            } else {
-                throw new ParseException("括号表达式解析错误，缺少 ')'");
-            }
+            ListExpression list = roundBracketParam();
+            list.add(expr);
+            list.reverse();
+            parser.next(); // eat ')'
             return list;
         }
 
-
-        // (expr param...
-        EvalExpression eval = new EvalExpression(expr);
-        while (!parser.currentIs(')') && parser.hasNext()) {
-            Expression param = operator();
-            eval.add(param);
-            skipBlank('\n');
-            if (parser.currentMatch(',', ';', ']', '}')) {
-                throw new ParseException("括号表达式解析错误，多余的符号 " + parser.current());
-            }
-        }
-
-        Expression pop = pop();
-        if (pop != null) {
-            eval.add(pop);
-        }
-
-        if (parser.currentIs(')')) {
-
-            parser.next();
-        }
+        // (expr ...)
+        EvalExpression eval = roundBracketCmd();
+        eval.add(expr);
+        eval.reverse();
+        parser.next(); // eat ')'
 
         return eval;
+    }
+
+    /**
+     * 括号表达式命令，lisp 语法
+     * (max 2 5)
+     * @return
+     */
+    private EvalExpression roundBracketCmd() {
+        skipBlank('\n');
+        if (parser.currentIs(')')) {
+            EvalExpression eval = new EvalExpression();
+            Expression pop = pop();
+            if (pop != null) {
+                eval.add(pop);
+            }
+            return eval;
+        }
+
+        // (
+        if (!parser.hasNext()) {
+            throw new ParseException("命令表达式解析错误，缺少 ')'");
+        }
+
+        // (expr...
+        Expression expr = operator();
+        EvalExpression eval = roundBracketCmd();
+        eval.add(expr);
+        return eval;
+    }
+
+    /**
+     * 解析括号表达式参数
+     * (a, b, c) || (a + b, c, d)
+     * @return
+     */
+    private ListExpression roundBracketParam() {
+        skipBlank(',', '\n');
+        if (parser.currentIs(')')) {
+            if (peek()) { // (,c d)
+                throw new ParseException("括号表达式解析错误，缺少 ','");
+            }
+            return new ListExpression();
+        }
+
+        // (a, b
+        if (!parser.hasNext()) {
+            throw new ParseException("括号表达式解析错误，缺少 ')'");
+        }
+
+        Expression expr = operator();
+
+        if (peek()) { // (,a + b c...
+            throw new ParseException("括号表达式解析错误，缺少 ','");
+        }
+
+        skipBlank('\n');
+
+        ListExpression list = roundBracketParam();
+        list.add(expr);
+        return list;
     }
 
     /**
