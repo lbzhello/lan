@@ -213,11 +213,20 @@ public class LanInterpreter implements Interpreter {
         char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
             Expression expression = roundBracketExpr();
+            EvalExpression eval = new EvalExpression(left);
+            // 参数
+            if (expression instanceof ListExpression) {
+                eval.addAll(((ListExpression) expression).toArray());
+            } else {
+                eval.add(expression);
+            }
             // expr(...)(...)
-            return term(expression);
-        } else if (current == '[') { // expr1, expr2...
-            Expression expression = squareBracketExpr();
-            return term(expression);
+            return term(eval);
+        } else if (current == '[') { // left[expr1, expr2...
+            ListExpression list = squareBracketExpr();
+            EvalExpression eval = new EvalExpression(left);
+            eval.addAll(list.toArray());
+            return term(eval);
         } else if (current == '{') {
 
         } else if (current == '.') {
@@ -489,7 +498,7 @@ public class LanInterpreter implements Interpreter {
      * [foo, 1 + 2 233]
      * @return
      */
-    private Expression squareBracketExpr() {
+    private ListExpression squareBracketExpr() {
         parser.next();
 
         ListExpression list = squareBracketExpr0();
@@ -578,7 +587,7 @@ public class LanInterpreter implements Interpreter {
         }
 
         // (expr ...)
-        EvalExpression eval = roundBracketCmd();
+        EvalExpression eval = roundBracketLisp();
         eval.add(expr);
         eval.reverse();
         parser.next(); // eat ')'
@@ -587,11 +596,11 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 括号表达式命令，lisp 语法
-     * (max 2 5)
+     * 括号表达式，lisp 语法
+     * (max 2 5 + 6)
      * @return
      */
-    private EvalExpression roundBracketCmd() {
+    private EvalExpression roundBracketLisp() {
         skipBlank('\n');
         if (parser.currentIs(')')) {
             EvalExpression eval = new EvalExpression();
@@ -609,7 +618,7 @@ public class LanInterpreter implements Interpreter {
 
         // (expr...
         Expression expr = operator();
-        EvalExpression eval = roundBracketCmd();
+        EvalExpression eval = roundBracketLisp();
         eval.add(expr);
         return eval;
     }

@@ -16,6 +16,8 @@ public class LanInterpreterTest {
     @Test
     public void roundBracketTest() {
         logger.debug("括号表达式测试");
+        ReplEngine.printExpr("foo(p1, p2, p3)");
+        ReplEngine.printExpr("foo(p1 p2 p3)");
         ReplEngine.printExpr("(foo, bar = 3 + 2\n, 5)");
 
         ReplEngine.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
