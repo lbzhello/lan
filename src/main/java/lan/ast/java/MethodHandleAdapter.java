@@ -25,11 +25,13 @@ public class MethodHandleAdapter implements MethodInfo, Expression {
         }
     }
 
+    @Override
     public MethodHandleAdapter bindTo(Object caller) {
         MethodHandle mh = this.methodHandle.bindTo(caller);
         return new MethodHandleAdapter(mh);
     }
 
+    @Override
     public Expression invoke(Object... params) {
         try {
             Object invoke = this.methodHandle.asSpreader(Object[].class, params.length).invoke(params);
