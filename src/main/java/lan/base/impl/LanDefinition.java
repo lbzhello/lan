@@ -49,6 +49,19 @@ public class LanDefinition implements Definition {
     public static final String FUNCTION = "fn";
     public static final String LET = "let";
 
+    // 泛型
+    public static final String TYPE = "type";
+    // 类
+    public static final String CLASS = "class";
+    // 继承类
+    public static final String EXTEND = "extend";
+
+    // 协议（接口）
+    public static final String PROTOCOL = "protocol";
+
+    // 实现接口
+    public static final String IMPL = "impl";
+
     public static final String DO = "do";
     public static final String END = "end";
     public static final String RETURN = "ret";

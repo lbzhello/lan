@@ -87,7 +87,6 @@ dependencies {
 
     // truffle 语言框架
     implementation group: 'org.graalvm.truffle', name: 'truffle-api', version: '21.0.0.2'
-
     implementation group: 'org.graalvm.truffle', name: 'truffle-dsl-processor', version: '21.0.0.2'
 
     // junit 前面需要 useJUnitPlatform()
