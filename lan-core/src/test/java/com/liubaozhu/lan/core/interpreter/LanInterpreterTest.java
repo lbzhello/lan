@@ -10,45 +10,45 @@ public class LanInterpreterTest {
     @Test
     public void squareBracketTest() {
         logger.debug("列表测试");
-        ReplEngine.printExpr("[foo, bar hello + world 3 + 2 5]");
+        LanShell.printExpr("[foo, bar hello + world 3 + 2 5]");
     }
 
     @Test
     public void roundBracketTest() {
         logger.debug("括号表达式测试");
-        ReplEngine.printExpr("foo(p1, p2, p3)");
-        ReplEngine.printExpr("foo(p1 p2 p3)");
-        ReplEngine.printExpr("(foo, bar = 3 + 2\n, 5)");
+        LanShell.printExpr("foo(p1, p2, p3)");
+        LanShell.printExpr("foo(p1 p2 p3)");
+        LanShell.printExpr("(foo, bar = 3 + 2\n, 5)");
 
-        ReplEngine.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
+        LanShell.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
 
-        ReplEngine.printExpr("(a, b\n, ,\n,c, d)");
-        ReplEngine.printExpr("(,)");
-        ReplEngine.printExpr("(a,)");
-        ReplEngine.printExpr("(,a)");
+        LanShell.printExpr("(a, b\n, ,\n,c, d)");
+        LanShell.printExpr("(,)");
+        LanShell.printExpr("(a,)");
+        LanShell.printExpr("(,a)");
     }
 
     @Test
     public void assignTest() {
         logger.debug("赋值表达式测试");
-        ReplEngine.printExpr("a = 3 + 2");
-        ReplEngine.printExpr("a = b = c");
+        LanShell.printExpr("a = 3 + 2");
+        LanShell.printExpr("a = b = c");
     }
 
     @Test
     public void commandTest() {
         logger.debug("命令表达式测试");
-        ReplEngine.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
-        ReplEngine.printExpr("cmd a");
-        ReplEngine.printExpr("cmd a b, \n 3 + 2, d");
+        LanShell.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
+        LanShell.printExpr("cmd a");
+        LanShell.printExpr("cmd a b, \n 3 + 2, d");
     }
 
     @Test
     public void operatorTest() {
         logger.debug("运算符测试");
-        ReplEngine.printResult("\"hello\" + \"world\" + \n 2 + 5");
+        LanShell.printResult("\"hello\" + \"world\" + \n 2 + 5");
 
-        ReplEngine.printResult("123 + 456 + 789");
+        LanShell.printResult("123 + 456 + 789");
     }
 
 }

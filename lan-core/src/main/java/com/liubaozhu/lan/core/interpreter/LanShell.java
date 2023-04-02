@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory;
 /**
  * 实时解析引擎
  */
-public final class ReplEngine {
-    private static final Logger logger = LoggerFactory.getLogger(ReplEngine.class);
+public final class LanShell {
+    private static final Logger logger = LoggerFactory.getLogger(LanShell.class);
 
     public static Expression interpret(String text) {
         LanParser parser = LanParser.text(text);
