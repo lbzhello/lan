@@ -9,7 +9,7 @@ import com.liubaozhu.lan.core.ast.java.MethodInfo;
 /**
  * 类中方法，字段引用
  */
-public class PointExpression extends BaseExpression {
+public class MethodExpression extends BaseExpression {
     @Override
     public Expression eval() {
         // caller.member

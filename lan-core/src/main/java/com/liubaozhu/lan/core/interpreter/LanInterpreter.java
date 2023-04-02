@@ -137,7 +137,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 字，原子表达式, 即最小结构的完整表达式
-     * expr = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
+     * 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
      * @return
      */
     public Expression word() {
@@ -197,7 +197,7 @@ public class LanInterpreter implements Interpreter {
     /**
      * 解析词语，根据 left 继续向下解析一次
      * 不包括运算符表达式 {@link #operator} 和命令表达
-     * 式 {@link #command(Expression)}
+     * 式 {@link #command(EvalExpression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
      */
@@ -239,33 +239,51 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 从头解析一个句子，即由表达式 {@link #word()}，运算符 {@link #operator(Expression, Expression)}，
-     * 命令 {@link #command(Expression)} 等组成的语句
-     * 语句结合顺序：expr -> operator -> command
-     * operator || command || term, term, term || statement = statement
+     * 从头解析一个句子，即由
+     *      单词 {@link #word()}，
+     *      赋值表达式 {@link #assignExpression(Expression)}，
+     *      运算符 {@link #operator(Expression, Expression)}，
+     *      命令 {@link #command(Expression)}
+     * 等组成的语句
+     *
+     * word = statement || operator || command || term, term, term || statement = statement
      * e.g.
      * head a b... || head + b...
      * @return
      */
     public Expression statement() {
-        Expression head = operator();
-
+        Expression term = term();
         if (isStatementEndSkipBlank()) {
-            Expression pop = pop();
-            // 运算符可能预取了下一个单词
-            if (pop != null) { // head pop
-                return new EvalExpression(head, pop);
+            return term;
+        }
+
+        // term = ... 赋值表达式
+        if (parser.currentIs('=')) {
+            // term == ... 运算符表达式
+            if (parser.prefetchNext(2, "==")) {
+                return operator(term, new SymbolExpression("=="));
             }
-            return head;
+            return assignExpression(term);
         }
 
-        // head (... 命令表达式
-        Expression commandExpr = command(head);
-
-        // 句子解析结束
-        if (isLineBreakSkipBlank()) {
-            parser.next(); // eat '\n'
+        // term op ... 运算符表达式
+        String op = parser.prefetchNextToken(it -> definition.isOperator(it));
+        if (op != null) {
+            return operator(term, new SymbolExpression(op));
         }
+
+        // term 解析结束
+        if (isStatementEndSkipBlank()) {
+           return term;
+        }
+
+        // term ... 命令表达式
+        Expression commandExpr = command(new EvalExpression(term));
+
+//        // 句子解析结束
+//        if (isLineBreakSkipBlank()) {
+//            parser.next(); // eat '\n'
+//        }
 
         skipBlank('\n', ';');
         return commandExpr;
@@ -279,51 +297,40 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression assignExpression(Expression left) {
-        parser.next();
-        if (parser.currentIs('=')) { // comma ==... 运算符
-            parser.next();
-            return operator(left, new SymbolExpression("=="));
-        }
+        parser.next(); // eat =
+
         skipBlank('\n'); // 跳过空白和换行
-        if (isStatementEnd()) { // comma =
-            return left;
+        if (isStatementEnd()) { // left = ;... 解析错误，等号后缺少表达式
+            throw new ParseException("解析错误，等号后缺少表达式", parser);
         }
 
-        Expression expr = operator(); // left = expr
-        skipBlank();
-        if (parser.currentIs('=')) { // left = expr =...
-            expr = assignExpression(expr); // left = (expr =...
-        }
+        Expression right = statement(); // left = statement...
+
         AssignExpression assign = new AssignExpression();
         assign.add(left);
-        assign.add(expr);
+        assign.add(right);
         return assign;
     }
 
     /**
      * 命令方式的函数调用
      * 支持逗号分割参数
-     * command = term || term operator operator || operator operator operator || term operator, operator, operator
+     * term || term term
      * e.g.
      * cmd
      * cmd p1 p2
-     * cmd p1 + p2 p3 = 3 + 2 p4
-     * cmd p1 + p2, p3, p4 = 3 + 2 支持逗号分割
+     * cmd (p1 + p2) p4
+     * cmd (p1 + p2) p3 (3 + 2)
      * @return
      */
-    private Expression command(Expression cmd) {
+    private Expression command(EvalExpression cmd) {
         if (isStatementEndSkipBlank()) {
-            if (peek()) { // cmd pop
-                return new EvalExpression(cmd, pop());
-            }
             return cmd;
         }
 
-        // 解析命令参数
-        EvalExpression param = commandParam();
-        param.add(cmd);
-        param.reverse();
-        return param;
+        cmd.add(term());
+        return command(cmd);
+
     }
 
     /**
@@ -413,10 +420,6 @@ public class LanInterpreter implements Interpreter {
             return left;
         }
 
-        if (parser.currentIs(',')) { // left,
-            return left;
-        }
-
         if (parser.currentIs('=')) { // left =...
             return assignExpression(left);
         }
@@ -470,7 +473,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private boolean isStatementEnd() {
-        return isLineBreakOrEnd() || parser.currentMatch(')', ']', '}');
+        return isLineBreakOrEnd() || parser.currentMatch(')', ']', '}', ',');
     }
 
     /**
@@ -664,49 +667,34 @@ public class LanInterpreter implements Interpreter {
     private Expression operator(Expression left, Expression op) {
         skipBlank('\n'); // 运算符支持换行
         if (isStatementEnd() || parser.currentIs(',')) {
-            return left;
+            throw new ParseException("运算符后面缺少参数", parser);
         }
 
         // Operator binary = definition.createOperator(String.valueOf(op));
 
         // 运算符等同函数调用
         // left.op 调用类 left 中的函数 op
-        PointExpression point = new PointExpression();
+        MethodExpression point = new MethodExpression();
         point.add(left);
         point.add(op);
 
         // op 函数调用
         EvalExpression eval = new EvalExpression();
-        eval.add(point); // left.op ...
+        eval.add(point); // (left.op ...
 
         Expression right = term();
-        if (isStatementEndSkipBlank() || parser.currentIs(',')) { // left op right
+        if (isStatementEndSkipBlank()) { // left op right
             eval.add(right);
             return eval;
         }
 
-        if (parser.currentIs('=')) { // left op right =...
-            parser.next();
-            if (!parser.currentIs('=')) { // (left op right) = ... 赋值表达式
-                parser.previous(); // 回退 '='
-                eval.add(right);
-                return eval;
-            }
-
-            push(new SymbolExpression("==")); // left op right == ...
+        // left op right op2... 运算符表达式
+        String op2Str = parser.prefetchNextToken(it -> definition.isOperator(it));
+        if (op2Str == null) { // left op right ... 非运算符表达式，且缺少语句结束符号
+            throw new ParseException("运算符解析错误，是否缺少 ';'", parser);
         }
 
-        Expression op2 = term(); // left op right op2...
-
-        if (!definition.isOperator(op2)) {
-            // left op right term... 运算符在列表中
-            eval.add(right);
-
-            push(op2);
-
-            // 返回运算符表达式 left op right
-            return eval;
-        }
+        Expression op2 = new SymbolExpression(op2Str);
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...

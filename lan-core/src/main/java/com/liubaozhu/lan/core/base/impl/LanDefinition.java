@@ -107,6 +107,7 @@ public class LanDefinition implements Definition {
 
         // 运算符 todo 运算符通过方法实现，只是解析时行为不同
         operatorSupplier.put(PLUS, null);
+        operatorSupplier.put(MUL, null);
 
         // 运算符优先级
         setPrecedence(ARROW, -1);

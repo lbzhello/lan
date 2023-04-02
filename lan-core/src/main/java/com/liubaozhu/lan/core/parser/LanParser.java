@@ -11,6 +11,7 @@ import java.text.StringCharacterIterator;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * 文本解析器
@@ -247,18 +248,61 @@ public class LanParser implements CharIterator {
     }
 
     /**
-     * 查看当前位置开始的 num 个字符序列，不会移动 pos
-     * @param num
+     * 部分情况需要预读下一个 token 来确定语法行为，这里用于恢复至预读前的数据
      */
-    public String lookNext(int num) {
+    
+    /**
+     * 预读当前位置开始的 num 个字符序列，
+     * 如果字符序列和 expect 相等则移动，否则回退到原位置
+     * @return true 预读成功；
+     *              预读失败，回退原位置
+     */
+    public boolean prefetchNext(int num, String expect) {
+        // 记录当前信息
         int p = iterator.getIndex();
+        int ln = line;
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < num; i++) {
-            sb.append(iterator.current());
-            iterator.next();
+            sb.append(current());
+            next();
         }
+        String str = sb.toString();
+        if (str.equals(expect)) {
+            return true;
+        }
+
+        // 不相等，回退到原来位置
         iterator.setIndex(p);
-        return sb.toString();
+        line = ln;
+        return false;
+    }
+
+    /**
+     * 预读下一个 Token，非分隔符的连续字符串为一个 Token
+     * 如果没通过 {@param checker} 验证，则回退到原位置
+     * @return 如果通过 {@param checker} 验证，则返回下一步获取的 token；
+     *         如果没通过验证，则返回 null。
+     */
+    public String prefetchNextToken(Predicate<String> checker) {
+        // 记录当前信息
+        int p = iterator.getIndex();
+        int ln = line;
+
+        StringBuilder sb = new StringBuilder();
+        while (!isDelimiter(current()) && hasNext()) {
+            sb.append(current());
+            next();
+        }
+        String token = sb.toString();
+        if (checker.test(token)) {
+            return token;
+        }
+
+        // 回退到原来位置
+        iterator.setIndex(p);
+        line = ln;
+        return null;
     }
 
 }

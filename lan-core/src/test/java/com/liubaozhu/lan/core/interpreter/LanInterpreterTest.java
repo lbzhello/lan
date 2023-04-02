@@ -31,7 +31,8 @@ public class LanInterpreterTest {
     @Test
     public void assignTest() {
         logger.debug("赋值表达式测试");
-        ReplEngine.printExpr("a = 3 + 2 = 5 = 6 + 7");
+        ReplEngine.printExpr("a = 3 + 2");
+        ReplEngine.printExpr("a = b = c");
     }
 
     @Test
