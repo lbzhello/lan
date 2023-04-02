@@ -10,7 +10,6 @@ buildscript {
         maven {
             url 'https://maven.aliyun.com/repository/public'
         }
-        jcenter()
     }
 
 }
@@ -71,32 +70,30 @@ allprojects {
 }
 
 subprojects {
+    dependencies {
+        // log
+        testImplementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+        implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
 
-}
+        // java.annotation 注解
+        implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
-dependencies {
-    // log
-    testImplementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.31'
+        // hutool 工具类
+        implementation 'cn.hutool:hutool-all:5.5.4'
 
-    // java.annotation 注解
-    implementation group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
+        // truffle 语言框架
+        implementation group: 'org.graalvm.truffle', name: 'truffle-api', version: '21.0.0.2'
+        implementation group: 'org.graalvm.truffle', name: 'truffle-dsl-processor', version: '21.0.0.2'
 
-    // hutool 工具类
-    implementation 'cn.hutool:hutool-all:5.5.4'
-
-    // truffle 语言框架
-    implementation group: 'org.graalvm.truffle', name: 'truffle-api', version: '21.0.0.2'
-    implementation group: 'org.graalvm.truffle', name: 'truffle-dsl-processor', version: '21.0.0.2'
-
-    // junit 前面需要 useJUnitPlatform()
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.2'
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.2'
+        // junit 前面需要 useJUnitPlatform()
+        testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.2'
+        testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.2'
 
 
-    // gradle 集成 lombok
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        // gradle 集成 lombok
+        compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+        testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+    }
 }

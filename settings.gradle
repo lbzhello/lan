@@ -1,2 +1,3 @@
 rootProject.name = 'lan'
+include 'lan-core'
 
