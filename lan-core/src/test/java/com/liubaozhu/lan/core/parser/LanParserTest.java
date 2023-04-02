@@ -2,10 +2,10 @@ package com.liubaozhu.lan.core.parser;
 
 import org.junit.jupiter.api.Test;
 
-public class TextParserTest {
+public class LanParserTest {
     @Test
     public void textTest() {
-        TextParser parser = TextParser.text("hello () nihao ma");
+        LanParser parser = LanParser.text("hello () nihao ma");
         System.out.println();
     }
 

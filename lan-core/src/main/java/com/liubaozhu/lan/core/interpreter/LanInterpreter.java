@@ -5,7 +5,7 @@ import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.ast.expression.*;
 import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.exception.ParseException;
-import com.liubaozhu.lan.core.parser.TextParser;
+import com.liubaozhu.lan.core.parser.LanParser;
 import com.liubaozhu.lan.core.parser.Token;
 
 import javax.annotation.Nullable;
@@ -76,7 +76,7 @@ public class LanInterpreter implements Interpreter {
     /**
      * 基础文本解析器
      */
-    private TextParser parser;
+    private LanParser parser;
 
     /**
      * 基础语言定义，运算符，关键字等
@@ -95,7 +95,7 @@ public class LanInterpreter implements Interpreter {
      */
     private Map<String, Interpreter> keywordInterpreter = new HashMap<>();
 
-    public LanInterpreter(TextParser parser, Definition definition, @Nullable Map<String, Interpreter> keywordInterpreter) {
+    public LanInterpreter(LanParser parser, Definition definition, @Nullable Map<String, Interpreter> keywordInterpreter) {
         this.parser = parser;
         this.definition = definition;
         this.keywordInterpreter = keywordInterpreter;
@@ -161,7 +161,7 @@ public class LanInterpreter implements Interpreter {
             parser.next(); // 先去掉
             return word();
         } else if (parser.hasNext()) { // 数字，字面量等
-            String token = parser.nextWord();
+            String token = parser.nextToken();
             // 关键字
             if (this.definition.isKeyWord(token)) {
                 // 交给对应的关键字解析器解析
@@ -546,7 +546,7 @@ public class LanInterpreter implements Interpreter {
      * 解析括号表达式
      * (operator, operator, operator) 列表表达式
      * (cmd operator operator) 命令调用
-     * e.g. (expr) || (cmd a + b c = 2) || (operator, operator, operator)
+     * e.g. (expr) || (cmd word word) || (operator, operator, operator)
      * @return
      */
     private Expression roundBracketExpr() {

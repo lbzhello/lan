@@ -1,6 +1,6 @@
 package com.liubaozhu.lan.core.interpreter;
 
-import com.liubaozhu.lan.core.parser.TextParser;
+import com.liubaozhu.lan.core.parser.LanParser;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.base.impl.LanDefinition;
 import org.slf4j.Logger;
@@ -13,7 +13,7 @@ public final class ReplEngine {
     private static final Logger logger = LoggerFactory.getLogger(ReplEngine.class);
 
     public static Expression interpret(String text) {
-        TextParser parser = TextParser.text(text);
+        LanParser parser = LanParser.text(text);
         LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
         Expression statement = lanInterpreter.statement();
         return statement;

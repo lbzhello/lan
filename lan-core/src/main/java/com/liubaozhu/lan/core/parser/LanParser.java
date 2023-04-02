@@ -15,11 +15,11 @@ import java.util.Set;
 /**
  * 文本解析器
  */
-public class TextParser implements CharIterator {
-    private static final Logger logger = LoggerFactory.getLogger(TextParser.class);
+public class LanParser implements CharIterator {
+    private static final Logger logger = LoggerFactory.getLogger(LanParser.class);
 
     // 空迭代器
-    public static final TextParser EMPTY_ITERATOR = text("");
+    public static final LanParser EMPTY_ITERATOR = text("");
 
     private final StringCharacterIterator iterator;
 
@@ -34,7 +34,7 @@ public class TextParser implements CharIterator {
     // 单词分割符
     private Set<Character> delimiters = new HashSet<>();
 
-    private TextParser(String text) {
+    private LanParser(String text) {
         this.text = text;
         this.iterator = new StringCharacterIterator(text);
     }
@@ -44,15 +44,15 @@ public class TextParser implements CharIterator {
      * @param text
      * @return
      */
-    public static TextParser text(String text) {
-        return new TextParser(text);
+    public static LanParser text(String text) {
+        return new LanParser(text);
     }
 
     /**
      * 根据 file 路径创建一个 iterator
      * @return
      */
-    public static TextParser file(String path) {
+    public static LanParser file(String path) {
         if (StringUtils.isEmpty(path)) {
             return EMPTY_ITERATOR;
         }
@@ -65,7 +65,7 @@ public class TextParser implements CharIterator {
      * @param file
      * @return
      */
-    public static TextParser file(File file) {
+    public static LanParser file(File file) {
         try {
             String text = FileUtils.toString(file);
             return text(text);
@@ -172,10 +172,10 @@ public class TextParser implements CharIterator {
     }
 
     /**
-     * 获取下一个单词，非分隔符的连续字符串为一个单词
+     * 获取下一个 Token，非分隔符的连续字符串为一个 Token
      * @return
      */
-    public String nextWord() {
+    public String nextToken() {
         StringBuilder sb = new StringBuilder();
         while (!isDelimiter(current()) && hasNext()) {
             sb.append(current());
