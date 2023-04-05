@@ -141,7 +141,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     public Expression word() {
-        parser.skipBlank(); // 去掉空白，换行字符
+        skipBlank('\n');
         char current = parser.current();
         if (current == ROUND_BRACKET_LEFT) { // (
             return roundBracketExpr();
@@ -155,10 +155,8 @@ public class LanInterpreter implements Interpreter {
 
         } else if (current == BACK_QUOTE) { // `
 
-        } else if (isLineBreak()) {
-            return Token.EOL;
         } else if (parser.isDelimiter(current)) { // 间隔符
-            parser.next(); // 先去掉
+            parser.next(); // 先去掉 todo 应该抛出异常
             return word();
         } else if (parser.hasNext()) { // 数字，字面量等
             String token = parser.nextToken();
@@ -186,12 +184,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private Expression term() {
-        Expression pop = pop();
-        if (Objects.isNull(pop)) {
-            return term(word());
-        }
-
-        return pop;
+        return term(word());
     }
 
     /**
@@ -204,11 +197,7 @@ public class LanInterpreter implements Interpreter {
     private Expression term(Expression left) {
         if (isBlank()) { // left ... 中间有空白字符
             skipBlank();
-            // expr (...) // 命令调用
-            if (parser.currentIs('(') || parser.currentIs('[') || parser.currentIs('{')) {
-                return left;
-            }
-            return term(left);
+            return left;
         }
         char current = parser.current();
         if (current == '(') { // 函数调用 expr(...)
@@ -243,7 +232,7 @@ public class LanInterpreter implements Interpreter {
      *      单词 {@link #word()}，
      *      赋值表达式 {@link #assignExpression(Expression)}，
      *      运算符 {@link #operator(Expression, Expression)}，
-     *      命令 {@link #command(Expression)}
+     *      命令 {@link #command(EvalExpression)}
      * 等组成的语句
      *
      * word = statement || operator || command || term, term, term || statement = statement
@@ -272,21 +261,11 @@ public class LanInterpreter implements Interpreter {
             return operator(term, new SymbolExpression(op));
         }
 
-        // term 解析结束
-        if (isStatementEndSkipBlank()) {
-           return term;
-        }
-
         // term ... 命令表达式
-        Expression commandExpr = command(new EvalExpression(term));
-
-//        // 句子解析结束
-//        if (isLineBreakSkipBlank()) {
-//            parser.next(); // eat '\n'
-//        }
+        Expression command = command(new EvalExpression(term));
 
         skipBlank('\n', ';');
-        return commandExpr;
+        return command;
     }
 
     /**
@@ -435,7 +414,7 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 是否空白字符
+     * 是否非换行空白字符
      * @return
      */
     private boolean isBlank() {
@@ -443,7 +422,7 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 跳过空格和 skipChars
+     * 跳过非换行空白字符和 skipChars
      * @param skipChars
      */
     private void skipBlank(char... skipChars) {
@@ -456,16 +435,8 @@ public class LanInterpreter implements Interpreter {
      * 是否结束换行符
      * @return
      */
-    private boolean isLineBreak() {
-        return parser.current() == '\n' || parser.current() == ';';
-    }
-
-    /**
-     * 是换行符或者文档结束
-     * @return
-     */
-    private boolean isLineBreakOrEnd() {
-        return isLineBreak() || !parser.hasNext();
+    private boolean isLineFeed() {
+        return parser.current() == '\n';
     }
 
     /**
@@ -473,7 +444,7 @@ public class LanInterpreter implements Interpreter {
      * @return
      */
     private boolean isStatementEnd() {
-        return isLineBreakOrEnd() || parser.currentMatch(')', ']', '}', ',');
+        return parser.isEOF() || parser.currentMatch('\n', ';', ',', ')', ']', '}');
     }
 
     /**
@@ -485,14 +456,14 @@ public class LanInterpreter implements Interpreter {
         return isStatementEnd();
     }
 
-    /**
-     * 跳过空格符后，判断当前字符是否换行符
-     * @return
-     */
-    private boolean isLineBreakSkipBlank() {
-        skipBlank();
-        return isLineBreak();
-    }
+//    /**
+//     * 跳过空格符后，判断当前字符是否换行符
+//     * @return
+//     */
+//    private boolean isLineBreakSkipBlank() {
+//        skipBlank();
+//        return isLF();
+//    }
 
     /**
      * 解析 [...] 表达式
@@ -666,7 +637,7 @@ public class LanInterpreter implements Interpreter {
      */
     private Expression operator(Expression left, Expression op) {
         skipBlank('\n'); // 运算符支持换行
-        if (isStatementEnd() || parser.currentIs(',')) {
+        if (isStatementEnd()) {
             throw new ParseException("运算符后面缺少参数", parser);
         }
 
@@ -674,13 +645,13 @@ public class LanInterpreter implements Interpreter {
 
         // 运算符等同函数调用
         // left.op 调用类 left 中的函数 op
-        MethodExpression point = new MethodExpression();
-        point.add(left);
-        point.add(op);
+        MethodExpression method = new MethodExpression();
+        method.add(left);
+        method.add(op);
 
         // op 函数调用
         EvalExpression eval = new EvalExpression();
-        eval.add(point); // (left.op ...
+        eval.add(method); // (left.op ...
 
         Expression right = term();
         if (isStatementEndSkipBlank()) { // left op right

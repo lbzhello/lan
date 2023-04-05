@@ -19,6 +19,10 @@ import java.util.function.Predicate;
 public class LanParser implements CharIterator {
     private static final Logger logger = LoggerFactory.getLogger(LanParser.class);
 
+    // 最大预取数量，有时候需要查看下几个字符来判断语法行为
+    // 这个值应该大于关键子长度
+    public static final int MAX_PREFETCH_SIZE = 32;
+
     // 空迭代器
     public static final LanParser EMPTY_ITERATOR = text("");
 
@@ -135,6 +139,14 @@ public class LanParser implements CharIterator {
     @Override
     public int lineNumber() {
         return line;
+    }
+
+    /**
+     * 字符流结束
+     * @return
+     */
+    public boolean isEOF() {
+        return !hasNext();
     }
 
     /**
@@ -282,15 +294,18 @@ public class LanParser implements CharIterator {
      * 预读下一个 Token，非分隔符的连续字符串为一个 Token
      * 如果没通过 {@param checker} 验证，则回退到原位置
      * @return 如果通过 {@param checker} 验证，则返回下一步获取的 token；
-     *         如果没通过验证，则返回 null。
+     *         如果没通过验证，则返回 null，并回退至原位置。
      */
     public String prefetchNextToken(Predicate<String> checker) {
         // 记录当前信息
         int p = iterator.getIndex();
         int ln = line;
 
+        int len = 0;
+
         StringBuilder sb = new StringBuilder();
-        while (!isDelimiter(current()) && hasNext()) {
+        while (!isDelimiter(current()) && hasNext() && len < MAX_PREFETCH_SIZE) {
+            len++;
             sb.append(current());
             next();
         }
