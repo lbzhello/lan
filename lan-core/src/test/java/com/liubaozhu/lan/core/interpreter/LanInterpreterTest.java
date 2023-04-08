@@ -35,12 +35,34 @@ public class LanInterpreterTest {
         LanShell.printExpr("a = b = c");
     }
 
+
+    @Test
+    public void listTest() {
+        LanShell.printExpr("(cmd, 3, 5)");
+        LanShell.printExpr("(cmd, 3 5, 6)");
+    }
+
+    @Test
+    public void lispTest() {
+        LanShell.printExpr("(cmd a (b 3) 8)");
+        LanShell.printExpr("(cmd a, b 3 8)");
+    }
+
     @Test
     public void commandTest() {
         logger.debug("命令表达式测试");
-        LanShell.printExpr("cmd a 2 + 3 c = 4 + 5 hello");
-        LanShell.printExpr("cmd a");
-        LanShell.printExpr("cmd a b, \n 3 + 2, d");
+        LanShell.printExpr("cmd a 6");
+        LanShell.printExpr("cmd a (2 + 3) 6 7");
+        // LanShell.printExpr("cmd a (2 + 3), 6 7");
+    }
+
+    @Test
+    public void wordTest() {
+        LanShell.printExpr("hello");
+        LanShell.printExpr("\"hello\"");
+        LanShell.printExpr("233");
+        LanShell.printExpr("233+");
+
     }
 
     @Test

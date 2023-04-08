@@ -32,7 +32,7 @@ public class LanParser implements CharIterator {
     // 所处行
     private int line = 1;
     // 相对于当前行的位置
-    private int linePos = 1;
+    private int column = 1;
 
     // 单词分割符，用来分割 token
     private Set<Character> delimiters = Set.of('=', '(', ')', '{', '}', '[', ']', '<', '>',
@@ -107,8 +107,11 @@ public class LanParser implements CharIterator {
 
     @Override
     public char next() {
-        if (current() == LINE_BREAK) {
+        if (current() == LINE_FEED) {
             line++;
+            column = 1;
+        } else {
+            column++;
         }
         return iterator.next();
     }
@@ -116,7 +119,7 @@ public class LanParser implements CharIterator {
     @Override
     public char previous() {
         char previous = iterator.previous();
-        if (previous == LINE_BREAK) {
+        if (previous == LINE_FEED) {
             line--;
         }
         return previous;
@@ -138,6 +141,14 @@ public class LanParser implements CharIterator {
     @Override
     public int lineNumber() {
         return line;
+    }
+
+    public int getLine() {
+        return line;
+    }
+
+    public int getColumn() {
+        return column;
     }
 
     /**
@@ -246,15 +257,15 @@ public class LanParser implements CharIterator {
      * @return
      */
     public boolean isBlankNotLineBreak() {
-        return Character.isWhitespace(current()) && current() != LINE_BREAK;
+        return Character.isWhitespace(current()) && current() != LINE_FEED;
     }
 
     /**
      * 查看前一个字符，不会改变 pos
      */
     public char lookPrevious() {
-        char previous = iterator.previous();
-        iterator.next();
+        char previous = previous();
+        next();
         return previous;
     }
 
@@ -272,6 +283,7 @@ public class LanParser implements CharIterator {
         // 记录当前信息
         int p = iterator.getIndex();
         int ln = line;
+        int col = column;
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < num; i++) {
@@ -286,6 +298,7 @@ public class LanParser implements CharIterator {
         // 不相等，回退到原来位置
         iterator.setIndex(p);
         line = ln;
+        column = col;
         return false;
     }
 
@@ -297,7 +310,7 @@ public class LanParser implements CharIterator {
     public String prefetchNextToken(Predicate<String> checker) {
         Predicate<Character> collector= null;
         if (isDelimiter(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
-            collector = this::isDelimiter;
+            collector = c -> isDelimiter(c) && !Character.isWhitespace(c);
         } else { // 非分割符组成的 token，一般用来判断关键字，例如：if else in not
             collector = c -> !isDelimiter(c);
         }
@@ -318,6 +331,7 @@ public class LanParser implements CharIterator {
         // 记录当前信息
         int p = iterator.getIndex();
         int ln = line;
+        int col = column;
 
         int len = 0;
 
@@ -335,6 +349,7 @@ public class LanParser implements CharIterator {
         // 回退到原来位置
         iterator.setIndex(p);
         line = ln;
+        column = col;
         return null;
     }
 

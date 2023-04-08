@@ -9,7 +9,7 @@ import java.text.CharacterIterator;
 public interface CharIterator {
     char DONE = '\uFFFF';
 
-    char LINE_BREAK = '\n';
+    char LINE_FEED = '\n';
 
     char current();
 
