@@ -4,14 +4,15 @@ import cn.hutool.core.util.NumberUtil;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.ast.ExpressionFactory;
 import com.liubaozhu.lan.core.ast.expression.*;
-import com.liubaozhu.lan.core.ast.java.MethodInfo;
 import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.exception.ParseException;
 import com.liubaozhu.lan.core.parser.LanParser;
 import com.liubaozhu.lan.core.parser.Token;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * 语言解析器
@@ -65,13 +66,6 @@ public class LanInterpreter implements Interpreter {
     private Definition definition;
 
     /**
-     * 解析栈，有时候需要解析下一个单词 {@link #phrase}才能确定是否返回;
-     * 比如 {@link #operator}, 需要判断下一个单词是否是运算符
-     * 可以将已经解析的下一个单词推入此栈中，供其他表达式获取
-     */
-    private Deque<Expression> termStack = new ArrayDeque<>();
-
-    /**
      * 关键字解析器
      */
     private Map<String, Interpreter> keywordInterpreter = new HashMap<>();
@@ -89,30 +83,6 @@ public class LanInterpreter implements Interpreter {
      */
     private Interpreter getKeywordInterpreter(String keyword) {
         return this.keywordInterpreter.get(keyword);
-    }
-
-    /**
-     * 查看栈里是否存在表达式
-     * @return
-     */
-    private boolean peek() {
-        return termStack.peek() != null;
-    }
-
-    /**
-     * 表达式出栈
-     * @return
-     */
-    private Expression pop() {
-        return termStack.poll();
-    }
-
-    /**
-     * 表达式入栈
-     * @return
-     */
-    private void push(Expression expr) {
-        termStack.push(expr);
     }
 
     /**
@@ -172,7 +142,7 @@ public class LanInterpreter implements Interpreter {
 
     /**
      * 解析词语，根据 left 继续向下解析一次
-     * 不包括运算符表达式 {@link #operator} 和命令表达
+     * 不包括运算符表达式 {@link #operator(Expression, SymbolExpression)} 和命令表达
      * 式 {@link #command(CommandExpression)}
      * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合） || i++ || i--
      * @return
@@ -362,107 +332,6 @@ public class LanInterpreter implements Interpreter {
     }
 
     /**
-     * 命令参数，递归，结果倒叙
-     * @return
-     */
-    private EvalExpression commandParam() {
-        skipBlank();
-        if (parser.currentIs(',')) { // param1, param2 支持逗号分割
-            skipBlank(',', '\n'); // ',' 后面可以接换行
-        }
-
-        if (isStatementEnd()) {
-            EvalExpression eval = new EvalExpression();
-            if (peek()) {
-                eval.add(pop());
-            }
-            return eval;
-        }
-
-        // 解析下一个表达式参数
-        Expression expression = operator();
-        EvalExpression param = commandParam();
-        param.add(expression);
-        return param;
-    }
-
-    /**
-     * 解析逗号分割的列表
-     * e.g. operator, operator, operator = operator,...
-     * @return
-     */
-    private ListExpression commaListExpr(Expression left) {
-        ListExpression comma = commaListExpr0(left);
-        comma.reverse();
-        return comma;
-    }
-
-    /**
-     * 解析逗号分割的列表 - 元素倒叙
-     * e.g.
-     * expr,
-     * expr1, expr2,,expr3,,
-     * expr1, expr2 = expr3 + expr4,, expr5
-     * @return
-     */
-    private ListExpression commaListExpr0(Expression left) {
-        if (parser.currentNot(',')) { // 解析完成
-            ListExpression list = new ListExpression();
-            list.add(left);
-            return list;
-        }
-
-        skipBlank(',', '\n');
-
-        if (isStatementEnd()) { // left,
-            ListExpression list = new ListExpression();
-            list.add(left);
-            return list;
-        }
-
-        if (parser.currentMatch('=', ':')) { // left, = || left, :
-            throw new ParseException("语法错误", parser);
-        }
-
-        // left, phrase...
-        Expression expr = operator();
-        if (peek()) {
-            throw new ParseException("表达式解析错误，缺少 ','", parser);
-        }
-        skipBlank();
-        ListExpression list = commaListExpr0(expr);
-        list.add(left);
-        return list;
-    }
-
-    /**
-     * 运算符
-     * expr
-     * expr1 + expr2
-     * expr = expr1 + expr2 = expr3 + expr4
-     * @return
-     */
-    private Expression operator() {
-        Expression left = phrase();
-        if (isStatementEndSkipBlank()) {
-            return left;
-        }
-
-        if (parser.currentIs('=')) { // left =...
-            return assignExpression(left);
-        }
-
-        Expression phrase = phrase();
-        if (definition.isOperator(phrase)) { // left phrase...
-            return operator(left, (SymbolExpression) phrase);
-        }
-
-        // 支持预取，放入栈中
-        push(phrase);
-        return left;
-    }
-
-    /**
      * 是否非换行空白字符
      * @return
      */
@@ -549,14 +418,10 @@ public class LanInterpreter implements Interpreter {
 
         if (parser.currentIs(']') || !parser.hasNext()) { // []
             ListExpression list = new ListExpression();
-            Expression pop = pop();
-            if (Objects.nonNull(pop)) {
-                list.add(pop);
-            }
             return list;
         }
 
-        Expression expr = operator();
+        Expression expr = operator(null, null);
 
         ListExpression list = squareBracketExpr0();
 
