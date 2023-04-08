@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.text.StringCharacterIterator;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -36,12 +34,21 @@ public class LanParser implements CharIterator {
     // 相对于当前行的位置
     private int linePos = 1;
 
-    // 单词分割符
-    private Set<Character> delimiters = new HashSet<>();
+    // 单词分割符，用来分割 token
+    private Set<Character> delimiters = Set.of('=', '(', ')', '{', '}', '[', ']', '<', '>',
+            ';', ',', '.', ':', '\\', '\'', '"', '`',
+            '+', '-', '*', '/', '%', '&', '|', '!', '^', '~',
+            '@', '#'
+    );
 
     private LanParser(String text) {
+        init();
         this.text = text;
         this.iterator = new StringCharacterIterator(text);
+    }
+
+    private void init() {
+
     }
 
     /**
@@ -80,20 +87,12 @@ public class LanParser implements CharIterator {
         }
     }
 
-    public boolean addDelimiter(char c) {
-        return delimiters.add(c);
-    }
-
-    public void addDelimiters(Collection<Character> delimiters) {
-        getDelimiters().addAll(delimiters);
-    }
-
-    private void removeDelimiter(Collection<Character> delimiters) {
-        getDelimiters().removeAll(delimiters);
-    }
-
     public Set<Character> getDelimiters() {
         return delimiters;
+    }
+
+    public void setDelimiters(Set<Character> delimiters) {
+        this.delimiters = delimiters;
     }
 
     @Override
@@ -291,12 +290,31 @@ public class LanParser implements CharIterator {
     }
 
     /**
-     * 预读下一个 Token，非分隔符的连续字符串为一个 Token
+     * 预取下一个合法 token，判断是否为运算符或关键字
+     * @param checker
+     * @return
+     */
+    public String prefetchNextToken(Predicate<String> checker) {
+        Predicate<Character> collector= null;
+        if (isDelimiter(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
+            collector = this::isDelimiter;
+        } else { // 非分割符组成的 token，一般用来判断关键字，例如：if else in not
+            collector = c -> !isDelimiter(c);
+        }
+
+        return prefetchNextToken(checker, collector);
+    }
+
+    /**
+     * 预取下一个合法 token，判断是否为运算符或关键字
+     * 一般由分隔符 {@link #delimiters} 分割，或者由其组成
      * 如果没通过 {@param checker} 验证，则回退到原位置
+     * @param checker 检查下一个 token 是否匹配，一般是一个关键字或运算符;
+     * @param collector 收集合法字符组成 token
      * @return 如果通过 {@param checker} 验证，则返回下一步获取的 token；
      *         如果没通过验证，则返回 null，并回退至原位置。
      */
-    public String prefetchNextToken(Predicate<String> checker) {
+    public String prefetchNextToken(Predicate<String> checker, Predicate<Character> collector) {
         // 记录当前信息
         int p = iterator.getIndex();
         int ln = line;
@@ -304,7 +322,7 @@ public class LanParser implements CharIterator {
         int len = 0;
 
         StringBuilder sb = new StringBuilder();
-        while (!isDelimiter(current()) && hasNext() && len < MAX_PREFETCH_SIZE) {
+        while (collector.test(current()) && hasNext() && len < MAX_PREFETCH_SIZE) {
             len++;
             sb.append(current());
             next();

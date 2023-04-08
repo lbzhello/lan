@@ -52,27 +52,6 @@ public class LanInterpreter implements Interpreter {
 
     public static final char ASSIGN = '=';
 
-    public Set<Character> delimiters = Set.of(
-            COMMA,
-            SEMICOLON,
-            POINT,
-            COLON,
-            ROUND_BRACKET_LEFT,
-            ROUND_BRACKET_RIGHT,
-            CURLY_BRACKET_LEFT,
-            CURLY_BRACKET_RIGHT,
-            SQUARE_BRACKET_LEFT,
-            SQUARE_BRACKET_RIGHT,
-            ANGLE_BRACKET_LEFT,
-            ANGLE_BRACKET_RIGHT,
-            SLASH_LEFT,
-            SLASH_RIGHT,
-            QUOTE_MARK_DOUBLE,
-            QUOTE_MARK_SINGLE,
-            BACK_QUOTE,
-            ASSIGN
-    );
-
     /**
      * 基础文本解析器
      */
@@ -99,7 +78,6 @@ public class LanInterpreter implements Interpreter {
         this.parser = parser;
         this.definition = definition;
         this.keywordInterpreter = keywordInterpreter;
-        this.parser.addDelimiters(delimiters);
     }
 
     /**
