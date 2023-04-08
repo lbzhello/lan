@@ -2,7 +2,9 @@ package com.liubaozhu.lan.core.interpreter;
 
 import cn.hutool.core.util.NumberUtil;
 import com.liubaozhu.lan.core.ast.Expression;
+import com.liubaozhu.lan.core.ast.ExpressionFactory;
 import com.liubaozhu.lan.core.ast.expression.*;
+import com.liubaozhu.lan.core.ast.java.MethodInfo;
 import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.exception.ParseException;
 import com.liubaozhu.lan.core.parser.LanParser;
@@ -133,8 +135,12 @@ public class LanInterpreter implements Interpreter {
 
         } else if (current == BACK_QUOTE) { // `
 
-        } else if (parser.isDelimiter(current)) { // 间隔符
-            throw new ParseException("word 表达式语法错误，非法间隔符", parser);
+        } else if (parser.isDelimiter(current)) { // ++i 可能是一元运算符，暂不支持
+            String op = parser.prefetchNextToken(it -> definition.isOperator(it));
+            if (op == null) { // 间隔符
+                throw new ParseException("word 表达式语法错误，非法间隔符", parser);
+            }
+            return new SymbolExpression(op); // ++
         } else if (parser.hasNext()) { // 数字，字面量等
             String token = parser.nextToken();
             // 关键字
@@ -168,7 +174,7 @@ public class LanInterpreter implements Interpreter {
      * 解析词语，根据 left 继续向下解析一次
      * 不包括运算符表达式 {@link #operator} 和命令表达
      * 式 {@link #command(CommandExpression)}
-     * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
+     * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合） || i++ || i--
      * @return
      */
     private Expression phrase(Expression left) {
@@ -216,7 +222,7 @@ public class LanInterpreter implements Interpreter {
      * 语句，即由
      *      单词 {@link #word()}，
      *      赋值表达式 {@link #assignExpression(Expression)}，
-     *      运算符 {@link #operator(Expression, Expression)}，
+     *      运算符 {@link #operator(Expression, SymbolExpression)}，
      *      命令 {@link #command(CommandExpression)}
      * 等组成的一条完整句子
      *
@@ -235,7 +241,7 @@ public class LanInterpreter implements Interpreter {
         // phrase op ... 运算符表达式
         String op = parser.prefetchNextToken(it -> definition.isOperator(it));
         if (op != null) {
-            return operator(phrase, new SymbolExpression(op));
+            return operator(phrase, ExpressionFactory.symbol(op));
         }
 
         // phrase = ... 赋值表达式
@@ -284,19 +290,23 @@ public class LanInterpreter implements Interpreter {
      * @param op
      * @return
      */
-    private Expression operator(Expression left, Expression op) {
+    private Expression operator(Expression left, SymbolExpression op) {
         skipBlank('\n'); // 运算符支持换行
-        if (isStatementEnd()) {
-            throw new ParseException("运算符后面缺少参数", parser);
-        }
-
-        // Operator binary = definition.createOperator(String.valueOf(op));
 
         // 运算符等同函数调用
         // left.op 调用类 left 中的函数 op
         MethodExpression method = new MethodExpression();
         method.add(left);
         method.add(op);
+
+        // expr op ;...
+        if (isStatementEnd()) {
+            // i++ i--
+            if (Objects.equals(op.getValue(), "==") || Objects.equals(op.getValue(), "--")) {
+                return method;
+            }
+            throw new ParseException("运算符后面缺少参数", parser);
+        }
 
         // op 函数调用
         EvalExpression eval = new EvalExpression();
@@ -314,7 +324,7 @@ public class LanInterpreter implements Interpreter {
             throw new ParseException("运算符解析错误，是否缺少 ';'", parser);
         }
 
-        Expression op2 = new SymbolExpression(op2Str);
+        SymbolExpression op2 = new SymbolExpression(op2Str);
 
         int precedence = definition.comparePrecedence(op, op2);
         if (precedence < 0) { // left op (right op2...
@@ -444,7 +454,7 @@ public class LanInterpreter implements Interpreter {
 
         Expression phrase = phrase();
         if (definition.isOperator(phrase)) { // left phrase...
-            return operator(left, phrase);
+            return operator(left, (SymbolExpression) phrase);
         }
 
         // 支持预取，放入栈中

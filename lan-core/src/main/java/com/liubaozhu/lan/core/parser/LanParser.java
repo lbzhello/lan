@@ -41,6 +41,11 @@ public class LanParser implements CharIterator {
             '@', '#'
     );
 
+    // 可组合分隔符，有些分割符能够组合成合法 token，通常是运算符或关键字，例如：+, -, ==, ++, +=, &&
+    private Set<Character> composableDelimiters = Set.of('=', '<', '>', ':',
+            '+', '-', '*', '/', '%', '&', '|', '!', '^', '~'
+    );
+
     private LanParser(String text) {
         init();
         this.text = text;
@@ -309,8 +314,8 @@ public class LanParser implements CharIterator {
      */
     public String prefetchNextToken(Predicate<String> checker) {
         Predicate<Character> collector= null;
-        if (isDelimiter(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
-            collector = c -> isDelimiter(c) && !Character.isWhitespace(c);
+        if (composableDelimiters.contains(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
+            collector = c -> composableDelimiters.contains(c);
         } else { // 非分割符组成的 token，一般用来判断关键字，例如：if else in not
             collector = c -> !isDelimiter(c);
         }
