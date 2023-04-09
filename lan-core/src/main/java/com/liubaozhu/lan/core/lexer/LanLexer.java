@@ -7,32 +7,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.StringCharacterIterator;
 import java.util.Set;
 import java.util.function.Predicate;
 
 /**
  * 文本解析器
  */
-public class LanLexer implements TextReader {
+public class LanLexer extends TextReader {
     private static final Logger logger = LoggerFactory.getLogger(LanLexer.class);
 
     // 最大预取数量，有时候需要查看下几个字符来判断语法行为
     // 这个值应该大于关键子长度
     public static final int MAX_PREFETCH_SIZE = 32;
-
-    // 空迭代器
-    public static final LanLexer EMPTY_ITERATOR = text("");
-
-    private final StringCharacterIterator iterator;
-
-    // 原文档
-    private String text;
-
-    // 所处行
-    private int line = 1;
-    // 相对于当前行的位置
-    private int column = 1;
 
     // 单词分割符，用来分割 token
     private Set<Character> delimiters = Set.of('=', '(', ')', '{', '}', '[', ']', '<', '>',
@@ -47,13 +33,7 @@ public class LanLexer implements TextReader {
     );
 
     private LanLexer(String text) {
-        init();
-        this.text = text;
-        this.iterator = new StringCharacterIterator(text);
-    }
-
-    private void init() {
-
+        super(text);
     }
 
     /**
@@ -69,9 +49,9 @@ public class LanLexer implements TextReader {
      * 根据 file 路径创建一个 iterator
      * @return
      */
-    public static LanLexer file(String path) {
+    public static LanLexer file(String path) throws IOException {
         if (StringUtils.isEmpty(path)) {
-            return EMPTY_ITERATOR;
+            return text("");
         }
         File file = new File(path);
         return file(file);
@@ -82,104 +62,14 @@ public class LanLexer implements TextReader {
      * @param file
      * @return
      */
-    public static LanLexer file(File file) {
+    public static LanLexer file(File file) throws IOException {
         try {
             String text = FileUtils.toString(file);
             return text(text);
         } catch (IOException e) {
             logger.error("failed to read file", e);
-            return EMPTY_ITERATOR;
+            throw e;
         }
-    }
-
-    public Set<Character> getDelimiters() {
-        return delimiters;
-    }
-
-    public void setDelimiters(Set<Character> delimiters) {
-        this.delimiters = delimiters;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return current() != DONE;
-    }
-
-    @Override
-    public char current() {
-        return iterator.current();
-    }
-
-    @Override
-    public char next() {
-        if (current() == LINE_FEED) {
-            line++;
-            column = 1;
-        } else {
-            column++;
-        }
-        return iterator.next();
-    }
-
-    @Override
-    public char previous() {
-        char previous = iterator.previous();
-        if (previous == LINE_FEED) {
-            line--;
-        }
-        return previous;
-    }
-
-    /**
-     * 获取当前所处位置，1-based
-     * @return
-     */
-    @Override
-    public int position() {
-        return iterator.getIndex() + 1;
-    }
-
-    /**
-     * 获取当前所处行，1-based
-     * @return
-     */
-    @Override
-    public int getLine() {
-        return line;
-    }
-
-    /**
-     * 获取当前所处列，1-based
-     * @return
-     */
-    public int getColumn() {
-        return column;
-    }
-
-    /**
-     * 字符流结束
-     * @return
-     */
-    public boolean isEOF() {
-        return !hasNext();
-    }
-
-    /**
-     * 判断当前字符是否为 c
-     * @param c
-     * @return
-     */
-    public boolean currentIs(char c) {
-        return current() == c;
-    }
-
-    /**
-     * 判断当前字符不是 c
-     * @param c
-     * @return
-     */
-    public boolean currentNot(char c) {
-        return !currentIs(c);
     }
 
     /**
@@ -197,6 +87,65 @@ public class LanLexer implements TextReader {
      */
     public boolean isDelimiter() {
         return isDelimiter(current());
+    }
+
+    /**
+     * 是否结束换行符
+     * @return
+     */
+    private boolean isLineFeed() {
+        return currentIs('\n');
+    }
+
+    /**
+     * 跳过空格后是否行结束
+     * @return
+     */
+    public boolean isStatementEndSkipBlank() {
+        skipBlank();
+        return isStatementEnd();
+    }
+
+    /**
+     * 是否语句结束
+     * @return
+     */
+    public boolean isStatementEnd() {
+        return isEOF() || currentMatch('\n', ';', ',', ')', ']', '}');
+    }
+
+    /**
+     * 是否非换行空白字符
+     * @return
+     */
+    public boolean isBlank() {
+        return Character.isWhitespace(current()) && currentNot('\n');
+    }
+
+    /**
+     * 跳过非换行空白字符和 skipChars
+     * @param skipChars
+     */
+    public void skipBlank(char... skipChars) {
+        while (Character.isWhitespace(current()) && currentNot('\n') || currentMatch(skipChars)) {
+            next();
+        }
+    }
+
+    /**
+     * 当前字符是否匹配
+     * @param cs
+     * @return
+     */
+    public boolean currentMatch(char... cs) {
+        char current = current();
+        for (char c : cs) {
+            if (current == c) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -230,51 +179,6 @@ public class LanLexer implements TextReader {
     }
 
     /**
-     * 跳过空白字符
-     * @return 当前指针指向字符
-     */
-    public char skipBlank() {
-        while (Character.isWhitespace(current())) {
-            next();
-        }
-
-        return current();
-    }
-
-    /**
-     * 当前字符是否匹配
-     * @param cs
-     * @return
-     */
-    public boolean currentMatch(char... cs) {
-        char current = current();
-        for (char c : cs) {
-            if (current == c) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * 非换行字符的空白字符
-     * @return
-     */
-    public boolean isBlankNotLineBreak() {
-        return Character.isWhitespace(current()) && current() != LINE_FEED;
-    }
-
-    /**
-     * 查看前一个字符，不会改变 pos
-     */
-    public char lookPrevious() {
-        char previous = previous();
-        next();
-        return previous;
-    }
-
-    /**
      * 部分情况需要预读下一个 token 来确定语法行为，这里用于恢复至预读前的数据
      */
     
@@ -284,11 +188,9 @@ public class LanLexer implements TextReader {
      * @return true 预读成功；
      *              预读失败，回退原位置
      */
-    public boolean prefetchNext(int num, String expect) {
+    public boolean prefetchNextChars(int num, String expect) {
         // 记录当前信息
-        int p = iterator.getIndex();
-        int ln = line;
-        int col = column;
+        Snapshot snapshot = snapshot();
 
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < num; i++) {
@@ -301,9 +203,7 @@ public class LanLexer implements TextReader {
         }
 
         // 不相等，回退到原来位置
-        iterator.setIndex(p);
-        line = ln;
-        column = col;
+        restore(snapshot);
         return false;
     }
 
@@ -312,7 +212,7 @@ public class LanLexer implements TextReader {
      * @param checker
      * @return
      */
-    public String prefetchNextToken(Predicate<String> checker) {
+    public String prefetchNextChars(Predicate<String> checker) {
         Predicate<Character> collector= null;
         if (composableDelimiters.contains(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
             collector = c -> composableDelimiters.contains(c);
@@ -320,7 +220,7 @@ public class LanLexer implements TextReader {
             collector = c -> !isDelimiter(c);
         }
 
-        return prefetchNextToken(checker, collector);
+        return prefetchNextChars(checker, collector);
     }
 
     /**
@@ -332,11 +232,9 @@ public class LanLexer implements TextReader {
      * @return 如果通过 {@param checker} 验证，则返回下一步获取的 token；
      *         如果没通过验证，则返回 null，并回退至原位置。
      */
-    public String prefetchNextToken(Predicate<String> checker, Predicate<Character> collector) {
+    public String prefetchNextChars(Predicate<String> checker, Predicate<Character> collector) {
         // 记录当前信息
-        int p = iterator.getIndex();
-        int ln = line;
-        int col = column;
+        Snapshot snapshot = snapshot();
 
         int len = 0;
 
@@ -352,9 +250,7 @@ public class LanLexer implements TextReader {
         }
 
         // 回退到原来位置
-        iterator.setIndex(p);
-        line = ln;
-        column = col;
+        restore(snapshot);
         return null;
     }
 

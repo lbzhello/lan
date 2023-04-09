@@ -71,6 +71,15 @@ public class LanParser {
     private Map<String, SyntaxParser> syntaxParser = new HashMap<>();
 
     /**
+     * 查找关键字对应的解析器，关键字对应的语法结构通过专门的解析器解析
+     * @param keyword
+     * @return
+     */
+    private SyntaxParser getSyntaxParser(String keyword) {
+        return this.syntaxParser.get(keyword);
+    }
+
+    /**
      * 只支持通过 builder 创建
      */
     private LanParser() {
@@ -86,7 +95,7 @@ public class LanParser {
      * @return
      */
     public Expression word() {
-        skipBlank('\n', ';');
+        lexer.skipBlank('\n', ';');
         char current = lexer.current();
         if (current == ROUND_BRACKET_LEFT) { // (
             return roundBracketExpression();
@@ -101,7 +110,7 @@ public class LanParser {
         } else if (current == BACK_QUOTE) { // `
 
         } else if (lexer.isDelimiter(current)) { // ++i 可能是一元运算符，暂不支持
-            String op = lexer.prefetchNextToken(it -> definition.isOperator(it));
+            String op = lexer.prefetchNextChars(it -> definition.isOperator(it));
             if (op == null) { // 间隔符
                 throw new ParseException("word 表达式语法错误，非法间隔符", lexer);
             }
@@ -136,8 +145,8 @@ public class LanParser {
      * @return
      */
     private Expression phrase(Expression left) {
-        if (isBlank()) { // left ... 中间有空白字符
-            skipBlank();
+        if (lexer.isBlank()) { // left ... 中间有空白字符
+            lexer.skipBlank();
             return left;
         }
         char current = lexer.current();
@@ -192,7 +201,7 @@ public class LanParser {
      */
     public Expression statement(boolean supportCommand) {
         Expression phrase = phrase();
-        if (isStatementEndSkipBlank()) {
+        if (lexer.isStatementEndSkipBlank()) {
             return phrase;
         }
 
@@ -205,7 +214,7 @@ public class LanParser {
         }
 
         // phrase op ... 运算符表达式
-        String op = lexer.prefetchNextToken(it -> definition.isOperator(it));
+        String op = lexer.prefetchNextChars(it -> definition.isOperator(it));
         if (op != null) {
             return operator(phrase, ExpressionFactory.symbol(op));
         }
@@ -222,7 +231,7 @@ public class LanParser {
         // phrase ... 命令表达式
         Expression command = command(new CommandExpression(phrase));
 
-        skipBlank('\n', ';');
+        lexer.skipBlank('\n', ';');
         return command;
     }
 
@@ -236,8 +245,8 @@ public class LanParser {
     private Expression assignExpression(Expression left) {
         lexer.next(); // eat =
 
-        skipBlank('\n'); // 跳过空白和换行
-        if (isStatementEnd()) { // left = ;... 解析错误，等号后缺少表达式
+        lexer.skipBlank('\n'); // 跳过空白和换行
+        if (lexer.isStatementEnd()) { // left = ;... 解析错误，等号后缺少表达式
             throw new ParseException("解析错误，等号后缺少表达式", lexer);
         }
 
@@ -257,7 +266,7 @@ public class LanParser {
      * @return
      */
     private Expression operator(Expression left, SymbolExpression op) {
-        skipBlank('\n'); // 运算符支持换行
+        lexer.skipBlank('\n'); // 运算符支持换行
 
         // 运算符等同函数调用
         // left.op 调用类 left 中的函数 op
@@ -266,7 +275,7 @@ public class LanParser {
         method.add(op);
 
         // expr op ;...
-        if (isStatementEnd()) {
+        if (lexer.isStatementEnd()) {
             // i++ i--
             if (Objects.equals(op.literal(), "==") || Objects.equals(op.literal(), "--")) {
                 return method;
@@ -279,13 +288,13 @@ public class LanParser {
         eval.add(method); // (left.op ...
 
         Expression right = phrase();
-        if (isStatementEndSkipBlank()) { // left op right
+        if (lexer.isStatementEndSkipBlank()) { // left op right
             eval.add(right);
             return eval;
         }
 
         // left op right op2... 运算符表达式
-        String op2Str = lexer.prefetchNextToken(it -> definition.isOperator(it));
+        String op2Str = lexer.prefetchNextChars(it -> definition.isOperator(it));
         if (op2Str == null) { // left op right ... 非运算符表达式，且缺少语句结束符号
             throw new ParseException("运算符解析错误，是否缺少 ';'", lexer);
         }
@@ -314,7 +323,7 @@ public class LanParser {
      * @return
      */
     private CommandExpression command(CommandExpression cmd) {
-        if (isStatementEndSkipBlank()) {
+        if (lexer.isStatementEndSkipBlank()) {
             return cmd;
         }
 
@@ -326,58 +335,6 @@ public class LanParser {
         return command(cmd);
 
     }
-
-    /**
-     * 是否非换行空白字符
-     * @return
-     */
-    private boolean isBlank() {
-        return Character.isWhitespace(lexer.current()) && lexer.currentNot('\n');
-    }
-
-    /**
-     * 跳过非换行空白字符和 skipChars
-     * @param skipChars
-     */
-    private void skipBlank(char... skipChars) {
-        while (Character.isWhitespace(lexer.current()) && lexer.currentNot('\n') || lexer.currentMatch(skipChars)) {
-            lexer.next();
-        }
-    }
-
-    /**
-     * 是否结束换行符
-     * @return
-     */
-    private boolean isLineFeed() {
-        return lexer.current() == '\n';
-    }
-
-    /**
-     * 是否语句结束
-     * @return
-     */
-    private boolean isStatementEnd() {
-        return lexer.isEOF() || lexer.currentMatch('\n', ';', ',', ')', ']', '}');
-    }
-
-    /**
-     * 跳过空格后是否行结束
-     * @return
-     */
-    private boolean isStatementEndSkipBlank() {
-        skipBlank();
-        return isStatementEnd();
-    }
-
-//    /**
-//     * 跳过空格符后，判断当前字符是否换行符
-//     * @return
-//     */
-//    private boolean isLineBreakSkipBlank() {
-//        skipBlank();
-//        return isLF();
-//    }
 
     /**
      * 解析 [...] 表达式
@@ -409,7 +366,7 @@ public class LanParser {
      * @return
      */
     private ListExpression squareBracketExpr0() {
-        skipBlank(',', '\n');
+        lexer.skipBlank(',', '\n');
 
 
         if (lexer.currentIs(']') || !lexer.hasNext()) { // []
@@ -435,7 +392,7 @@ public class LanParser {
      */
     private Expression roundBracketExpression() {
         lexer.next(); // eat '('
-        skipBlank('\n');
+        lexer.skipBlank('\n');
 
         // ( )
         if (lexer.currentIs(')')) {
@@ -445,7 +402,7 @@ public class LanParser {
 
         // (,) 空元组表达式
         if (lexer.currentIs(',')) {
-            skipBlank(',', '\n');
+            lexer.skipBlank(',', '\n');
             if (!lexer.currentIs(')')) {
                 lexer.next(); // eat ')'
                 return new TupleExpression();
@@ -490,7 +447,7 @@ public class LanParser {
      * @return
      */
     private void roundBracketLisp(LispExpression lisp) {
-        skipBlank('\n');
+        lexer.skipBlank('\n');
         if (lexer.currentIs(')')) {
             lexer.next(); // eat ')'
             return;
@@ -519,7 +476,7 @@ public class LanParser {
      * @return
      */
     private void roundBracketTuple(TupleExpression tuple) {
-        skipBlank('\n');
+        lexer.skipBlank('\n');
         // (tuple)
         if (lexer.currentIs(')')) {
             lexer.next(); // eat ')'
@@ -528,7 +485,7 @@ public class LanParser {
 
         if (lexer.currentIs(',')) {
             lexer.next(); // eat ','
-            skipBlank('\n');
+            lexer.skipBlank('\n');
             // (tuple,)... 允许最后多个空格
             if (lexer.currentIs(')')) {
                 return;
@@ -581,15 +538,6 @@ public class LanParser {
 
     public void setSyntaxParser(Map<String, SyntaxParser> syntaxParser) {
         this.syntaxParser = syntaxParser;
-    }
-
-    /**
-     * 查找关键字对应的解析器，关键字对应的语法结构通过专门的解析器解析
-     * @param keyword
-     * @return
-     */
-    private SyntaxParser getSyntaxParser(String keyword) {
-        return this.syntaxParser.get(keyword);
     }
 
     /**
