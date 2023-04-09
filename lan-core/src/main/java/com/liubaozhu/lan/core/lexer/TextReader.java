@@ -4,7 +4,7 @@ import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 
 /**
- * 读取文本格式源代码
+ * 读取文本格式源代码，提供基本字符操作
  * @see CharacterIterator
  */
 public class TextReader {

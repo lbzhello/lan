@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * 语言解析器
- * 关键字通过额外的解析器解析，支持扩展
+ * 语法解析器
+ * 关键字通过额外的解析器解析 {@link SyntaxParser}，以支持扩展
  * word = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
  * phrase = word || word word
  * operator = phrase || phrase op phrase

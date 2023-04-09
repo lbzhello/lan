@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * 文本解析器
+ * 词法分析器
  */
 public class LanLexer extends TextReader {
     private static final Logger logger = LoggerFactory.getLogger(LanLexer.class);
