@@ -8,7 +8,6 @@ import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.exception.ParseException;
 import com.liubaozhu.lan.core.lexer.LanLexer;
 
-import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -69,21 +68,16 @@ public class LanParser {
     /**
      * 关键字解析器
      */
-    private Map<String, SyntaxParser> keywordInterpreter = new HashMap<>();
-
-    public LanParser(LanLexer lexer, Definition definition, @Nullable Map<String, SyntaxParser> keywordInterpreter) {
-        this.lexer = lexer;
-        this.definition = definition;
-        this.keywordInterpreter = keywordInterpreter;
-    }
+    private Map<String, SyntaxParser> syntaxParser = new HashMap<>();
 
     /**
-     * 查找关键字对应的解析器，关键字对应的语法结构通过专门的解析器解析
-     * @param keyword
-     * @return
+     * 只支持通过 builder 创建
      */
-    private SyntaxParser getKeywordInterpreter(String keyword) {
-        return this.keywordInterpreter.get(keyword);
+    private LanParser() {
+    }
+
+    public static LanParserBuilder builder() {
+        return new LanParserBuilder();
     }
 
     /**
@@ -205,7 +199,7 @@ public class LanParser {
         // 关键字 if for fn class 等语法结构解析
         if (this.definition.isKeyWord(phrase.literal())) {
             // 交给对应的关键字解析器解析
-            SyntaxParser keywordSyntaxParser = getKeywordInterpreter(phrase.literal());
+            SyntaxParser syntaxParser1 = getSyntaxParser(phrase.literal());
             // 调用
             return null;
         }
@@ -585,7 +579,60 @@ public class LanParser {
         this.definition = definition;
     }
 
-    public void setKeywordInterpreter(Map<String, SyntaxParser> keywordInterpreter) {
-        this.keywordInterpreter = keywordInterpreter;
+    public void setSyntaxParser(Map<String, SyntaxParser> syntaxParser) {
+        this.syntaxParser = syntaxParser;
+    }
+
+    /**
+     * 查找关键字对应的解析器，关键字对应的语法结构通过专门的解析器解析
+     * @param keyword
+     * @return
+     */
+    private SyntaxParser getSyntaxParser(String keyword) {
+        return this.syntaxParser.get(keyword);
+    }
+
+    /**
+     * builder 模式创建 {@link LanParser}
+     */
+    public static class LanParserBuilder {
+        /**
+         * 基础文本解析器
+         */
+        private LanLexer lexer;
+
+        /**
+         * 基础语言定义，运算符，关键字等
+         */
+        private Definition definition;
+
+        public LanParser build() {
+            LanParser lanParser = new LanParser();
+            lanParser.setLexer(this.lexer);
+            lanParser.setDefinition(this.definition);
+            lanParser.setSyntaxParser(this.syntaxParser);
+            return lanParser;
+        }
+
+        /**
+         * 关键字解析器
+         */
+        private Map<String, SyntaxParser> syntaxParser = new HashMap<>();
+
+        public LanParserBuilder lexer(LanLexer lexer) {
+            this.lexer = lexer;
+            return this;
+        }
+
+        public LanParserBuilder definition(Definition definition) {
+            this.definition = definition;
+            return this;
+        }
+
+        public LanParserBuilder syntaxParser(Map<String, SyntaxParser> syntaxParser) {
+            this.syntaxParser = syntaxParser;
+            return this;
+        }
+
     }
 }

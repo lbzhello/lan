@@ -13,8 +13,13 @@ public final class LanShell {
     private static final Logger logger = LoggerFactory.getLogger(LanShell.class);
 
     public static Expression interpret(String text) {
-        LanLexer parser = LanLexer.text(text);
-        LanParser lanParser = new LanParser(parser, new LanDefinition(), null);
+        LanLexer lexer = LanLexer.text(text);
+        LanParser lanParser = LanParser.builder()
+                .lexer(lexer)
+                .definition(new LanDefinition())
+                .syntaxParser(null)
+                .build();
+
         Expression statement = lanParser.statement();
         return statement;
     }
