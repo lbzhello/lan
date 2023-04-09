@@ -10,6 +10,14 @@ public interface Expression extends Serializable, Cloneable {
         return this;
     }
 
+    /**
+     * 返回字面量信息，即表达式源码表示
+     * @return
+     */
+    default String literal() {
+        return "";
+    }
+
     Constant NIL = new Constant("nil");
     Constant TRUE = new Constant("true");
     Constant FALSE = new Constant("false");

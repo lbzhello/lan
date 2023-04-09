@@ -12,7 +12,8 @@ public class SymbolExpression implements Value {
         this.value = value;
     }
 
-    public String getValue() {
+    @Override
+    public String literal() {
         return value;
     }
 

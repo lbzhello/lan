@@ -1,361 +1,591 @@
 package com.liubaozhu.lan.core.parser;
 
-import com.liubaozhu.lan.core.util.FileUtils;
-import com.liubaozhu.lan.core.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import cn.hutool.core.util.NumberUtil;
+import com.liubaozhu.lan.core.ast.Expression;
+import com.liubaozhu.lan.core.ast.ExpressionFactory;
+import com.liubaozhu.lan.core.ast.expression.*;
+import com.liubaozhu.lan.core.base.Definition;
+import com.liubaozhu.lan.core.exception.ParseException;
+import com.liubaozhu.lan.core.lexer.LanLexer;
 
-import java.io.File;
-import java.io.IOException;
-import java.text.StringCharacterIterator;
-import java.util.Set;
-import java.util.function.Predicate;
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 /**
- * 文本解析器
+ * 语言解析器
+ * 关键字通过额外的解析器解析，支持扩展
+ * word = 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
+ * phrase = word || word word
+ * operator = phrase || phrase op phrase
+ * command = phrase || phrase operator operator || operator operator operator
+ * statement = operator || command
  */
-public class LanParser implements CharIterator {
-    private static final Logger logger = LoggerFactory.getLogger(LanParser.class);
+public class LanParser {
 
-    // 最大预取数量，有时候需要查看下几个字符来判断语法行为
-    // 这个值应该大于关键子长度
-    public static final int MAX_PREFETCH_SIZE = 32;
+    /**
+     * 分隔符定义
+     */
+    public static char COMMA = ',';
+    public static char SEMICOLON = ';';
+    public static char POINT = '.';
+    public static char COLON = ':';
 
-    // 空迭代器
-    public static final LanParser EMPTY_ITERATOR = text("");
+    public static char ROUND_BRACKET_LEFT = '(';
+    public static char ROUND_BRACKET_RIGHT = ')';
 
-    private final StringCharacterIterator iterator;
+    public static char CURLY_BRACKET_LEFT = '{';
+    public static char CURLY_BRACKET_RIGHT = '}';
 
-    // 原文档
-    private String text;
+    public static char SQUARE_BRACKET_LEFT = '[';
+    public static char SQUARE_BRACKET_RIGHT = ']';
 
-    // 所处行
-    private int line = 1;
-    // 相对于当前行的位置
-    private int column = 1;
+    public static char ANGLE_BRACKET_LEFT = '<';
+    public static char ANGLE_BRACKET_RIGHT = '>';
 
-    // 单词分割符，用来分割 token
-    private Set<Character> delimiters = Set.of('=', '(', ')', '{', '}', '[', ']', '<', '>',
-            ';', ',', '.', ':', '\\', '\'', '"', '`',
-            '+', '-', '*', '/', '%', '&', '|', '!', '^', '~',
-            '@', '#'
-    );
+    public static char SLASH_LEFT = '\\';
+    public static char SLASH_RIGHT = '/';
 
-    // 可组合分隔符，有些分割符能够组合成合法 token，通常是运算符或关键字，例如：+, -, ==, ++, +=, &&
-    private Set<Character> composableDelimiters = Set.of('=', '<', '>', ':',
-            '+', '-', '*', '/', '%', '&', '|', '!', '^', '~'
-    );
+    public static char QUOTE_MARK_DOUBLE = '"';
+    public static char QUOTE_MARK_SINGLE = '\'';
 
-    private LanParser(String text) {
-        init();
-        this.text = text;
-        this.iterator = new StringCharacterIterator(text);
-    }
+    public static char BACK_QUOTE = '`';
 
-    private void init() {
+    public static final char ASSIGN = '=';
 
+    public static Expression EOF = new Expression.Constant("EOF");
+
+    /**
+     * 基础文本解析器
+     */
+    private LanLexer lexer;
+
+    /**
+     * 基础语言定义，运算符，关键字等
+     */
+    private Definition definition;
+
+    /**
+     * 关键字解析器
+     */
+    private Map<String, SyntaxParser> keywordInterpreter = new HashMap<>();
+
+    public LanParser(LanLexer lexer, Definition definition, @Nullable Map<String, SyntaxParser> keywordInterpreter) {
+        this.lexer = lexer;
+        this.definition = definition;
+        this.keywordInterpreter = keywordInterpreter;
     }
 
     /**
-     * 根据 string 创建一个 iterator
-     * @param text
+     * 查找关键字对应的解析器，关键字对应的语法结构通过专门的解析器解析
+     * @param keyword
      * @return
      */
-    public static LanParser text(String text) {
-        return new LanParser(text);
+    private SyntaxParser getKeywordInterpreter(String keyword) {
+        return this.keywordInterpreter.get(keyword);
     }
 
     /**
-     * 根据 file 路径创建一个 iterator
+     * 字，原子表达式, 即最小结构的完整表达式
+     * 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
      * @return
      */
-    public static LanParser file(String path) {
-        if (StringUtils.isEmpty(path)) {
-            return EMPTY_ITERATOR;
+    public Expression word() {
+        skipBlank('\n', ';');
+        char current = lexer.current();
+        if (current == ROUND_BRACKET_LEFT) { // (
+            return roundBracketExpression();
+        } else if (current == SQUARE_BRACKET_LEFT) { // [
+            return squareBracketExpr();
+        } else if (current == CURLY_BRACKET_LEFT) { // {
+
+        } else if (current == QUOTE_MARK_DOUBLE) { // "
+            return stringExpression();
+        } else if (current == QUOTE_MARK_SINGLE) { // '
+
+        } else if (current == BACK_QUOTE) { // `
+
+        } else if (lexer.isDelimiter(current)) { // ++i 可能是一元运算符，暂不支持
+            String op = lexer.prefetchNextToken(it -> definition.isOperator(it));
+            if (op == null) { // 间隔符
+                throw new ParseException("word 表达式语法错误，非法间隔符", lexer);
+            }
+            return new SymbolExpression(op); // ++
+        } else if (lexer.hasNext()) { // 数字，字面量等
+            String token = lexer.nextToken();
+
+            if (NumberUtil.isNumber(token)) { //todo 无依赖
+                return new NumberExpression(token);
+            }
+            return new SymbolExpression(token);
         }
-        File file = new File(path);
-        return file(file);
+
+        return EOF;
     }
 
     /**
-     * 根据文件创建一个 iterator
-     * @param file
+     * 词语，由字 {@link #word()} 组成的词语
+     * phrase = word || word word
+     * foo(...) || foo.bar || foo::bar || foo: bar （左强结合）
      * @return
      */
-    public static LanParser file(File file) {
+    private Expression phrase() {
+        return phrase(word());
+    }
+
+    /**
+     * 解析词语，根据 left 继续向下解析一次
+     * 不包括运算符表达式 {@link #operator(Expression, SymbolExpression)} 和命令表达
+     * 式 {@link #command(CommandExpression)}
+     * e.g. foo(...) || foo.bar || foo::bar || foo: bar （左强结合） || i++ || i--
+     * @return
+     */
+    private Expression phrase(Expression left) {
+        if (isBlank()) { // left ... 中间有空白字符
+            skipBlank();
+            return left;
+        }
+        char current = lexer.current();
+        if (current == '(') { // 函数调用 expr(...)
+            Expression expression = roundBracketExpression();
+            EvalExpression eval = new EvalExpression(left);
+            // 参数
+            if (expression instanceof ListExpression) {
+                eval.addAll(((ListExpression) expression).toArray());
+            } else {
+                eval.add(expression);
+            }
+            // expr(...)(...)
+            return phrase(eval);
+        } else if (current == '[') { // left[expr1, expr2...
+            ListExpression list = squareBracketExpr();
+            EvalExpression eval = new EvalExpression(left);
+            eval.addAll(list.toArray());
+            return phrase(eval);
+        } else if (current == '{') {
+
+        } else if (current == '.') {
+
+        } else if (current == ':') {
+
+        }
+
+        return left;
+    }
+
+    /**
+     * 语句，及一个完整的表达式，默认支持命令行
+     * @return
+     */
+    public Expression statement() {
+        return statement(true);
+    }
+
+    /**
+     * 语句，即由
+     *      单词 {@link #word()}，
+     *      赋值表达式 {@link #assignExpression(Expression)}，
+     *      运算符 {@link #operator(Expression, SymbolExpression)}，
+     *      命令 {@link #command(CommandExpression)}
+     * 等组成的一条完整句子
+     *
+     * word = statement || operator || command || phrase, phrase, phrase || statement = statement
+     * e.g.
+     * head a b... || head + b...
+     * @param supportCommand 是否支持命令表达式，一般只有行开始支持命令式调用
+     * @return
+     */
+    public Expression statement(boolean supportCommand) {
+        Expression phrase = phrase();
+        if (isStatementEndSkipBlank()) {
+            return phrase;
+        }
+
+        // 关键字 if for fn class 等语法结构解析
+        if (this.definition.isKeyWord(phrase.literal())) {
+            // 交给对应的关键字解析器解析
+            SyntaxParser keywordSyntaxParser = getKeywordInterpreter(phrase.literal());
+            // 调用
+            return null;
+        }
+
+        // phrase op ... 运算符表达式
+        String op = lexer.prefetchNextToken(it -> definition.isOperator(it));
+        if (op != null) {
+            return operator(phrase, ExpressionFactory.symbol(op));
+        }
+
+        // phrase = ... 赋值表达式
+        if (lexer.currentIs('=')) {
+            return assignExpression(phrase);
+        }
+
+        if (!supportCommand) {
+            throw new ParseException("当前位置不支持命令式调用，是否缺少语句结束符 ';' ?", lexer);
+        }
+
+        // phrase ... 命令表达式
+        Expression command = command(new CommandExpression(phrase));
+
+        skipBlank('\n', ';');
+        return command;
+    }
+
+    /**
+     * 赋值表达式
+     * expr = operator
+     * expr = p1 + p2 = p3 + p4 + p5
+     * @param left
+     * @return
+     */
+    private Expression assignExpression(Expression left) {
+        lexer.next(); // eat =
+
+        skipBlank('\n'); // 跳过空白和换行
+        if (isStatementEnd()) { // left = ;... 解析错误，等号后缺少表达式
+            throw new ParseException("解析错误，等号后缺少表达式", lexer);
+        }
+
+        Expression right = statement(); // left = statement...
+
+        AssignExpression assign = new AssignExpression();
+        assign.add(left);
+        assign.add(right);
+        return assign;
+    }
+
+    /**
+     * 运算符表达式
+     * operator = phrase op phrase
+     * @param left
+     * @param op
+     * @return
+     */
+    private Expression operator(Expression left, SymbolExpression op) {
+        skipBlank('\n'); // 运算符支持换行
+
+        // 运算符等同函数调用
+        // left.op 调用类 left 中的函数 op
+        MethodExpression method = new MethodExpression();
+        method.add(left);
+        method.add(op);
+
+        // expr op ;...
+        if (isStatementEnd()) {
+            // i++ i--
+            if (Objects.equals(op.literal(), "==") || Objects.equals(op.literal(), "--")) {
+                return method;
+            }
+            throw new ParseException("运算符后面缺少参数", lexer);
+        }
+
+        // op 函数调用
+        EvalExpression eval = new EvalExpression();
+        eval.add(method); // (left.op ...
+
+        Expression right = phrase();
+        if (isStatementEndSkipBlank()) { // left op right
+            eval.add(right);
+            return eval;
+        }
+
+        // left op right op2... 运算符表达式
+        String op2Str = lexer.prefetchNextToken(it -> definition.isOperator(it));
+        if (op2Str == null) { // left op right ... 非运算符表达式，且缺少语句结束符号
+            throw new ParseException("运算符解析错误，是否缺少 ';'", lexer);
+        }
+
+        SymbolExpression op2 = new SymbolExpression(op2Str);
+
+        int precedence = definition.comparePrecedence(op, op2);
+        if (precedence < 0) { // left op (right op2...
+            eval.add(operator(right, op2));
+            return eval;
+        } else { // (left op right) op2...
+            eval.add(right);
+            return operator(eval, op2);
+        }
+    }
+
+    /**
+     * 命令方式的函数调用
+     * 支持逗号分割参数
+     * phrase || phrase phrase
+     * e.g.
+     * cmd
+     * cmd p1 p2
+     * cmd (p1 + p2) p4
+     * cmd (p1 + p2) p3 (3 + 2)
+     * @return
+     */
+    private CommandExpression command(CommandExpression cmd) {
+        if (isStatementEndSkipBlank()) {
+            return cmd;
+        }
+
         try {
-            String text = FileUtils.toString(file);
-            return text(text);
-        } catch (IOException e) {
-            logger.error("failed to read file", e);
-            return EMPTY_ITERATOR;
+            cmd.add(phrase());
+        } catch (Exception e) {
+            throw new ParseException("命令表达式语法错误，参数必须是合法 phrase 表达式", lexer, e);
+        }
+        return command(cmd);
+
+    }
+
+    /**
+     * 是否非换行空白字符
+     * @return
+     */
+    private boolean isBlank() {
+        return Character.isWhitespace(lexer.current()) && lexer.currentNot('\n');
+    }
+
+    /**
+     * 跳过非换行空白字符和 skipChars
+     * @param skipChars
+     */
+    private void skipBlank(char... skipChars) {
+        while (Character.isWhitespace(lexer.current()) && lexer.currentNot('\n') || lexer.currentMatch(skipChars)) {
+            lexer.next();
         }
     }
 
-    public Set<Character> getDelimiters() {
-        return delimiters;
+    /**
+     * 是否结束换行符
+     * @return
+     */
+    private boolean isLineFeed() {
+        return lexer.current() == '\n';
     }
 
-    public void setDelimiters(Set<Character> delimiters) {
-        this.delimiters = delimiters;
+    /**
+     * 是否语句结束
+     * @return
+     */
+    private boolean isStatementEnd() {
+        return lexer.isEOF() || lexer.currentMatch('\n', ';', ',', ')', ']', '}');
     }
 
-    @Override
-    public boolean hasNext() {
-        return current() != DONE;
+    /**
+     * 跳过空格后是否行结束
+     * @return
+     */
+    private boolean isStatementEndSkipBlank() {
+        skipBlank();
+        return isStatementEnd();
     }
 
-    @Override
-    public char current() {
-        return iterator.current();
-    }
+//    /**
+//     * 跳过空格符后，判断当前字符是否换行符
+//     * @return
+//     */
+//    private boolean isLineBreakSkipBlank() {
+//        skipBlank();
+//        return isLF();
+//    }
 
-    @Override
-    public char next() {
-        if (current() == LINE_FEED) {
-            line++;
-            column = 1;
+    /**
+     * 解析 [...] 表达式
+     * [foo, bar, 123]
+     * [1 2 3 4]
+     * [foo, 1 + 2 233]
+     * @return
+     */
+    private ListExpression squareBracketExpr() {
+        lexer.next();
+
+        ListExpression list = squareBracketExpr0();
+
+        if (lexer.currentIs(']')) {
+            lexer.next();
         } else {
-            column++;
+            throw new ParseException("列表解析错误，缺少 ]", lexer);
         }
-        return iterator.next();
+
+        list.reverse();
+        return list;
     }
 
-    @Override
-    public char previous() {
-        char previous = iterator.previous();
-        if (previous == LINE_FEED) {
-            line--;
+    /**
+     * 解析 [...] 表达式
+     * [foo, bar, 123]
+     * [1 2 3 4]
+     * [foo, 1 + 2 233]
+     * @return
+     */
+    private ListExpression squareBracketExpr0() {
+        skipBlank(',', '\n');
+
+
+        if (lexer.currentIs(']') || !lexer.hasNext()) { // []
+            ListExpression list = new ListExpression();
+            return list;
         }
-        return previous;
+
+        Expression expr = operator(null, null);
+
+        ListExpression list = squareBracketExpr0();
+
+        list.add(expr);
+
+        return list;
     }
 
     /**
-     * 获取当前所处位置，1-based
+     * 解析括号表达式
+     * (operator, operator, operator) 列表表达式
+     * (cmd operator operator) 命令调用
+     * e.g. (expr) || (cmd word word) || (operator, operator, operator)
      * @return
      */
-    @Override
-    public int position() {
-        return iterator.getIndex() + 1;
-    }
+    private Expression roundBracketExpression() {
+        lexer.next(); // eat '('
+        skipBlank('\n');
 
-    /**
-     * 获取当前所处行
-     * @return
-     */
-    @Override
-    public int lineNumber() {
-        return line;
-    }
-
-    public int getLine() {
-        return line;
-    }
-
-    public int getColumn() {
-        return column;
-    }
-
-    /**
-     * 字符流结束
-     * @return
-     */
-    public boolean isEOF() {
-        return !hasNext();
-    }
-
-    /**
-     * 判断当前字符是否为 c
-     * @param c
-     * @return
-     */
-    public boolean currentIs(char c) {
-        return current() == c;
-    }
-
-    /**
-     * 判断当前字符不是 c
-     * @param c
-     * @return
-     */
-    public boolean currentNot(char c) {
-        return !currentIs(c);
-    }
-
-    /**
-     * 判断字符是否分割符（空白，特殊字符）
-     * @param c
-     * @return
-     */
-    public boolean isDelimiter(char c) {
-        return delimiters.contains(c) || Character.isWhitespace(c);
-    }
-
-    /**
-     * 判断当前字符是否分隔符
-     * @return
-     */
-    public boolean isDelimiter() {
-        return isDelimiter(current());
-    }
-
-    /**
-     * 获取下一个 Token，非分隔符的连续字符串为一个 Token
-     * @return
-     */
-    public String nextToken() {
-        StringBuilder sb = new StringBuilder();
-        while (!isDelimiter(current()) && hasNext()) {
-            sb.append(current());
-            next();
+        // ( )
+        if (lexer.currentIs(')')) {
+            lexer.next();
+            return new TupleExpression();
         }
-        return sb.toString();
-    }
 
-    /**
-     * 获取字符序列，直到遇到 c 字符为止
-     * 最终返回的字符串不包括 c 字符
-     * @return
-     */
-    public String nextUntil(char c) {
-        StringBuilder sb = new StringBuilder();
-        while (hasNext()) {
-            if (current() == c) {
-                break;
+        // (,) 空元组表达式
+        if (lexer.currentIs(',')) {
+            skipBlank(',', '\n');
+            if (!lexer.currentIs(')')) {
+                lexer.next(); // eat ')'
+                return new TupleExpression();
+            } else {
+                throw new ParseException("元组表达式解析错误，空元组表达式格式：(,); 非空元组表达式不能以 ',' 号开始", lexer);
             }
-            sb.append(current());
-            next();
+
         }
-        return sb.toString();
+
+        // (expr...
+        Expression statement = statement();
+
+        // (expr,... 元组表达式
+        if (lexer.currentIs(',')) {
+            TupleExpression tuple = new TupleExpression();
+            tuple.add(statement);
+            roundBracketTuple(tuple);
+            return tuple;
+        }
+
+        // (statement)... 语句等表达式，e.g. (a + b) || (a = c + d) || (max a b)
+        if (lexer.currentIs(')')) {
+            lexer.next(); // eat ')'
+            return statement;
+        }
+
+        // (max a b c).. lisp 式函数调用语法
+        LispExpression lisp = new LispExpression();
+
+        // (cmd expr \n expr... lisp 表达式中的命令支持换行
+        if (statement instanceof CommandExpression command) {
+            lisp.addAll(command.toArray());
+        }
+
+        roundBracketLisp(lisp);
+        return lisp;
     }
 
     /**
-     * 跳过空白字符
-     * @return 当前指针指向字符
-     */
-    public char skipBlank() {
-        while (Character.isWhitespace(current())) {
-            next();
-        }
-
-        return current();
-    }
-
-    /**
-     * 当前字符是否匹配
-     * @param cs
+     * 括号表达式，lisp 语法
+     * (max 2 5 + 6)
      * @return
      */
-    public boolean currentMatch(char... cs) {
-        char current = current();
-        for (char c : cs) {
-            if (current == c) {
-                return true;
+    private void roundBracketLisp(LispExpression lisp) {
+        skipBlank('\n');
+        if (lexer.currentIs(')')) {
+            lexer.next(); // eat ')'
+            return;
+        }
+
+        // (
+        if (!lexer.hasNext()) {
+            throw new ParseException("lisp 表达式解析错误，是否缺少 ')' ?", lexer);
+        }
+
+        try {
+            // (lisp phrase...
+            Expression phrase = phrase();
+            lisp.add(phrase);
+        } catch (Exception e) {
+            throw new ParseException("lisp 表达式解析错误，参数只支持词语表达式，是否缺少 ')' ?", lexer, e);
+        }
+
+        // 递归解析
+        roundBracketLisp(lisp);
+    }
+
+    /**
+     * 解析元组表达式
+     * (a, b, c) || (a + b, c, d)
+     * @return
+     */
+    private void roundBracketTuple(TupleExpression tuple) {
+        skipBlank('\n');
+        // (tuple)
+        if (lexer.currentIs(')')) {
+            lexer.next(); // eat ')'
+            return;
+        }
+
+        if (lexer.currentIs(',')) {
+            lexer.next(); // eat ','
+            skipBlank('\n');
+            // (tuple,)... 允许最后多个空格
+            if (lexer.currentIs(')')) {
+                return;
             }
+        } else {
+            throw new ParseException("tuple 表达式解析错误，缺少 ','", lexer);
         }
 
-        return false;
+        // (a, b
+        if (!lexer.hasNext()) {
+            throw new ParseException("元组表达式解析错误，缺少 ')'。", lexer);
+        }
+
+        // (tuple, param,... 解析参数，元组中参数不支持命令式调用
+        try {
+            Expression param = statement(false);
+            tuple.add(param);
+        } catch (Exception e) {
+            throw new ParseException("元组表达式解析错误，是否缺少 ',' ?", lexer);
+        }
+
+        roundBracketTuple(tuple);
     }
 
     /**
-     * 非换行字符的空白字符
+     * 解析 String
      * @return
      */
-    public boolean isBlankNotLineBreak() {
-        return Character.isWhitespace(current()) && current() != LINE_FEED;
-    }
-
-    /**
-     * 查看前一个字符，不会改变 pos
-     */
-    public char lookPrevious() {
-        char previous = previous();
-        next();
-        return previous;
-    }
-
-    /**
-     * 部分情况需要预读下一个 token 来确定语法行为，这里用于恢复至预读前的数据
-     */
-    
-    /**
-     * 预读当前位置开始的 num 个字符序列，
-     * 如果字符序列和 expect 相等则移动，否则回退到原位置
-     * @return true 预读成功；
-     *              预读失败，回退原位置
-     */
-    public boolean prefetchNext(int num, String expect) {
-        // 记录当前信息
-        int p = iterator.getIndex();
-        int ln = line;
-        int col = column;
-
+    private StringExpression stringExpression() {
+        lexer.next(); // eat "
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < num; i++) {
-            sb.append(current());
-            next();
-        }
-        String str = sb.toString();
-        if (str.equals(expect)) {
-            return true;
+        while (!lexer.currentIs('"') && lexer.hasNext()) {
+            sb.append(lexer.current());
+            lexer.next();
         }
 
-        // 不相等，回退到原来位置
-        iterator.setIndex(p);
-        line = ln;
-        column = col;
-        return false;
+        if (lexer.currentIs('"')) {
+            lexer.next(); // eat "
+        }
+        return new StringExpression(sb.toString());
     }
 
-    /**
-     * 预取下一个合法 token，判断是否为运算符或关键字
-     * @param checker
-     * @return
-     */
-    public String prefetchNextToken(Predicate<String> checker) {
-        Predicate<Character> collector= null;
-        if (composableDelimiters.contains(current())) { // 分隔符组成的 token，一般用来判断运算符，例如 ==, ++, +=
-            collector = c -> composableDelimiters.contains(c);
-        } else { // 非分割符组成的 token，一般用来判断关键字，例如：if else in not
-            collector = c -> !isDelimiter(c);
-        }
-
-        return prefetchNextToken(checker, collector);
+    public void setLexer(LanLexer lexer) {
+        this.lexer = lexer;
     }
 
-    /**
-     * 预取下一个合法 token，判断是否为运算符或关键字
-     * 一般由分隔符 {@link #delimiters} 分割，或者由其组成
-     * 如果没通过 {@param checker} 验证，则回退到原位置
-     * @param checker 检查下一个 token 是否匹配，一般是一个关键字或运算符;
-     * @param collector 收集合法字符组成 token
-     * @return 如果通过 {@param checker} 验证，则返回下一步获取的 token；
-     *         如果没通过验证，则返回 null，并回退至原位置。
-     */
-    public String prefetchNextToken(Predicate<String> checker, Predicate<Character> collector) {
-        // 记录当前信息
-        int p = iterator.getIndex();
-        int ln = line;
-        int col = column;
-
-        int len = 0;
-
-        StringBuilder sb = new StringBuilder();
-        while (collector.test(current()) && hasNext() && len < MAX_PREFETCH_SIZE) {
-            len++;
-            sb.append(current());
-            next();
-        }
-        String token = sb.toString();
-        if (checker.test(token)) {
-            return token;
-        }
-
-        // 回退到原来位置
-        iterator.setIndex(p);
-        line = ln;
-        column = col;
-        return null;
+    public void setDefinition(Definition definition) {
+        this.definition = definition;
     }
 
+    public void setKeywordInterpreter(Map<String, SyntaxParser> keywordInterpreter) {
+        this.keywordInterpreter = keywordInterpreter;
+    }
 }

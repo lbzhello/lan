@@ -2,7 +2,6 @@ package com.liubaozhu.lan.core.ast.expression;
 
 import com.liubaozhu.lan.core.ast.BaseExpression;
 import com.liubaozhu.lan.core.ast.Expression;
-import com.liubaozhu.lan.core.ast.Value;
 import com.liubaozhu.lan.core.ast.java.JavaObject;
 import com.liubaozhu.lan.core.ast.java.MethodInfo;
 
@@ -32,7 +31,7 @@ public class MethodExpression extends BaseExpression {
 
         }
 
-        return Value.NIL;
+        return Expression.NIL;
     }
 
     @Override

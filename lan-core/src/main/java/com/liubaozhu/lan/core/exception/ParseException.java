@@ -1,23 +1,23 @@
 package com.liubaozhu.lan.core.exception;
 
-import com.liubaozhu.lan.core.parser.LanParser;
+import com.liubaozhu.lan.core.lexer.LanLexer;
 
 /**
  * 语法解析错误
  */
 public class ParseException extends RuntimeException {
     private String message;
-    private LanParser parser;
+    private LanLexer parser;
 
     public ParseException(String message) {
         this(message, null);
     }
 
-    public ParseException(String message, LanParser parser) {
+    public ParseException(String message, LanLexer parser) {
         this(message, parser, null);
     }
 
-    public ParseException(String message, LanParser parser, Exception exception) {
+    public ParseException(String message, LanLexer parser, Exception exception) {
         super(message, exception);
         this.message = "[" +
                 "line=" + parser.getLine() + ", " +

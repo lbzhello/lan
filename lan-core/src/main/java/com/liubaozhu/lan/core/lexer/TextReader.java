@@ -1,12 +1,12 @@
-package com.liubaozhu.lan.core.parser;
+package com.liubaozhu.lan.core.lexer;
 
 import java.text.CharacterIterator;
 
 /**
- * 字符迭代器，用来解析文本
+ * 读取文本格式源代码
  * @see CharacterIterator
  */
-public interface CharIterator {
+public interface TextReader {
     char DONE = '\uFFFF';
 
     char LINE_FEED = '\n';
@@ -29,5 +29,5 @@ public interface CharIterator {
      * 获取当前所处行
      * @return
      */
-    int lineNumber();
+    int getLine();
 }

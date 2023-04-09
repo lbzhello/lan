@@ -1,6 +1,6 @@
-package com.liubaozhu.lan.core.interpreter;
+package com.liubaozhu.lan.core.parser;
 
-import com.liubaozhu.lan.core.parser.LanParser;
+import com.liubaozhu.lan.core.lexer.LanLexer;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.base.impl.LanDefinition;
 import org.slf4j.Logger;
@@ -13,9 +13,9 @@ public final class LanShell {
     private static final Logger logger = LoggerFactory.getLogger(LanShell.class);
 
     public static Expression interpret(String text) {
-        LanParser parser = LanParser.text(text);
-        LanInterpreter lanInterpreter = new LanInterpreter(parser, new LanDefinition(), null);
-        Expression statement = lanInterpreter.statement();
+        LanLexer parser = LanLexer.text(text);
+        LanParser lanParser = new LanParser(parser, new LanDefinition(), null);
+        Expression statement = lanParser.statement();
         return statement;
     }
 

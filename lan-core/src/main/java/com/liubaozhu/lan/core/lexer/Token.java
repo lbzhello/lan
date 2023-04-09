@@ -1,4 +1,4 @@
-package com.liubaozhu.lan.core.parser;
+package com.liubaozhu.lan.core.lexer;
 
 import com.liubaozhu.lan.core.ast.Expression;
 

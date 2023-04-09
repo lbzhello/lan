@@ -5,10 +5,9 @@ package com.liubaozhu.lan.core.ast.java;
  */
 
 import com.liubaozhu.lan.core.ast.BaseExpression;
+import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.ast.expression.NumberExpression;
 import com.liubaozhu.lan.core.ast.expression.StringExpression;
-import com.liubaozhu.lan.core.ast.Expression;
-import com.liubaozhu.lan.core.ast.Value;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -91,7 +90,7 @@ public class JavaMethod extends BaseExpression implements MethodInfo {
         } catch (Throwable throwable) {
             throwable.printStackTrace();
         }
-        return Value.NIL;
+        return Expression.NIL;
     }
 
     @Override
