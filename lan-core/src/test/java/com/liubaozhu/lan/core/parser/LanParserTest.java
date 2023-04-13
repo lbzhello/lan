@@ -35,9 +35,14 @@ public class LanParserTest {
         LanShell.printExpr("a = b = c");
     }
 
-
     @Test
     public void listTest() {
+        LanShell.printExpr("[cmd + 2 , 3 + 2, 5]");
+        LanShell.printExpr("[cmd (3 + 2) 5]");
+    }
+
+    @Test
+    public void tupleTest() {
         LanShell.printExpr("(cmd, 3, 5)");
         LanShell.printExpr("(cmd, 3 5, 6)");
     }

@@ -100,7 +100,7 @@ public class LanParser {
         if (current == ROUND_BRACKET_LEFT) { // (
             return roundBracketExpression();
         } else if (current == SQUARE_BRACKET_LEFT) { // [
-            return squareBracketExpr();
+            return squareBracketExpression();
         } else if (current == CURLY_BRACKET_LEFT) { // {
 
         } else if (current == QUOTE_MARK_DOUBLE) { // "
@@ -162,7 +162,7 @@ public class LanParser {
             // expr(...)(...)
             return phrase(eval);
         } else if (current == '[') { // left[expr1, expr2...
-            ListExpression list = squareBracketExpr();
+            ListExpression list = squareBracketExpression();
             EvalExpression eval = new EvalExpression(left);
             eval.addAll(list.toArray());
             return phrase(eval);
@@ -338,49 +338,101 @@ public class LanParser {
 
     /**
      * 解析 [...] 表达式
-     * [foo, bar, 123]
-     * [1 2 3 4]
-     * [foo, 1 + 2 233]
+     *
+     * 空格分割列表： [foo (1 + 2) 233]
+     * 逗号分割列表： [foo, 1 + 2, 233]
      * @return
      */
-    private ListExpression squareBracketExpr() {
-        lexer.next();
+    private ListExpression squareBracketExpression() {
+        lexer.next(); // eat '['
 
-        ListExpression list = squareBracketExpr0();
+        ListExpression list = new ListExpression();
 
+        // [] 空列表
         if (lexer.currentIs(']')) {
             lexer.next();
-        } else {
-            throw new ParseException("列表解析错误，缺少 ]", lexer);
+            return list;
         }
 
-        list.reverse();
+        // 解析第一个元素
+        Expression first = phrase();
+
+        // [first + ... 判断第一个元素是否为运算符
+        String op = lexer.prefetchNextChars(it -> definition.isOperator(it));
+        if (op != null) {
+            first = operator(first, new SymbolExpression(op));
+        }
+
+        list.add(first);
+
+        // [first, ... 逗号分割列表，运算符一定是逗号分割
+        if (lexer.currentIs(',') || op != null) {
+            parseSquareBracketByComma(list);
+        } else { // [first ... 空格分割列表
+            parseSquareBracketBySpace(list);
+        }
+
         return list;
+    }
+
+    private void parseSquareBracketBySpace(ListExpression list) {
+        lexer.skipBlank();
+        if (lexer.currentIs(']')) {
+            lexer.next();
+            return;
+        }
+
+        if (lexer.isStatementEnd()) {
+            throw new ParseException("列表表达式 [] 解析错误，异常结束符号: '%s'".formatted(lexer.current()), lexer);
+        }
+
+        try {
+            Expression phrase = phrase();
+            list.add(phrase);
+        } catch (Exception e) {
+            throw new ParseException("列表表达式 [] 解析错误", lexer, e);
+        }
+
+        parseSquareBracketBySpace(list);
     }
 
     /**
      * 解析 [...] 表达式
-     * [foo, bar, 123]
-     * [1 2 3 4]
-     * [foo, 1 + 2 233]
+     *
+     * 逗号分割列表： [foo, 1 + 2, 233]
      * @return
      */
-    private ListExpression squareBracketExpr0() {
-        lexer.skipBlank(',', '\n');
+    private void parseSquareBracketByComma(ListExpression list) {
+        lexer.skipBlank('\n');
 
-
-        if (lexer.currentIs(']') || !lexer.hasNext()) { // []
-            ListExpression list = new ListExpression();
-            return list;
+        if (lexer.currentIs(']')) {
+            return;
         }
 
-        Expression expr = operator(null, null);
+        if (lexer.currentIs(',')) {
+            lexer.next();
+            lexer.skipBlank('\n');
+            // list,] 允许最后多个 ','
+            if (lexer.currentIs(']')) {
+                lexer.next(); // eat ']'
+                return;
+            }
+        } else {
+            throw new ParseException("列表表达式 [] 解析错误，缺少 ','", lexer);
+        }
 
-        ListExpression list = squareBracketExpr0();
+        if (lexer.isStatementEnd()) {
+            throw new ParseException("列表表达式 [] 解析错误，缺少 ']'", lexer);
+        }
 
-        list.add(expr);
+        try {
+            Expression statement = statement(false);
+            list.add(statement);
+        } catch (Exception e) {
+            throw new ParseException("列表表达式 [] 解析错误", lexer, e);
+        }
 
-        return list;
+        parseSquareBracketByComma(list);
     }
 
     /**
@@ -488,6 +540,7 @@ public class LanParser {
             lexer.skipBlank('\n');
             // (tuple,)... 允许最后多个空格
             if (lexer.currentIs(')')) {
+                lexer.next(); // eat ')'
                 return;
             }
         } else {
