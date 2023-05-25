@@ -93,7 +93,7 @@ public class LanLexer extends TextReader {
      * 是否结束换行符
      * @return
      */
-    private boolean isLineFeed() {
+    public boolean isLineFeed() {
         return currentIs('\n');
     }
 

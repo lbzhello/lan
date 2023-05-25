@@ -8,9 +8,8 @@ import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.exception.ParseException;
 import com.liubaozhu.lan.core.lexer.LanLexer;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import javax.annotation.Nullable;
+import java.util.*;
 
 /**
  * 语法解析器
@@ -171,7 +170,14 @@ public class LanParser {
         } else if (current == '.') {
 
         } else if (current == ':') {
-
+            if (lexer.prefetchNextChars(2, "::")) { // left:: 类型声明
+                if (left instanceof SymbolExpression symbol) { // foo::... 变量声明
+                    VariableExpression variable = new VariableExpression(symbol.literal());
+                    Expression word = word();
+                    variable.setType(word);
+                    return variable;
+                }
+            }
         }
 
         return left;
@@ -191,7 +197,9 @@ public class LanParser {
      *      赋值表达式 {@link #assignExpression(Expression)}，
      *      运算符 {@link #operator(Expression, SymbolExpression)}，
      *      命令 {@link #command(CommandExpression)}
-     * 等组成的一条完整句子
+     * 等组成的一条完整句子。
+     *
+     * 解析完成后会去除空白符和换行符（'\n' ';'）。
      *
      * word = statement || operator || command || phrase, phrase, phrase || statement = statement
      * e.g.
@@ -337,6 +345,140 @@ public class LanParser {
     }
 
     /**
+     * lambda 表达式
+     * {p1::Int p2:Int -> Int | return p1 + p2}
+     * 1. 返回值 -> 可以省略；
+     * 2. 如果 | 位于行尾，可以省略；
+     * 3. 如果有参数，-> 和 | 只能省略一个；
+     * 5. 如果无参数，-> 和 | 都可以省略；
+     * @return
+     */
+    private LambdaExpression curlyBracketExpression() {
+        lexer.next(); // eat '{'
+        lexer.skipBlank('\n');
+
+
+        LambdaExpression lambda = new LambdaExpression();
+        // 解析 lambda 参数
+        parseLambdaParams(lambda, null, false);
+        // 解析 lambda 方法体
+        parseLambdaBody(lambda);
+        return lambda;
+    }
+
+    private void parseLambdaParams(LambdaExpression lambda) {
+        lexer.skipBlank('\n');
+        if (lexer.currentIs('|')) { // { | ...
+            lexer.next();
+            parseLambdaBody(lambda);
+        }
+
+        if (lexer.currentIs('}')) { // {} 空lambda
+            lexer.next();
+            return;
+        }
+
+        boolean isCommaSeparate = false; // 是否逗号分割的参数
+
+        Expression first = phrase();
+        lexer.skipBlank('\n');
+
+        // 确定参数是逗号分割还是空格分割
+        if (lexer.currentIs(',')) { // {first, ...
+            lexer.next(); // eat ','
+            lexer.skipBlank('\n');
+            isCommaSeparate = true;
+        }
+
+        parseLambdaParams(lambda, first, isCommaSeparate);
+    }
+
+    // 检测是否没有参数
+    private boolean checkHasParams(LambdaExpression lambda, Expression phrase) {
+        if (definition.isKeyWord(phrase.literal())) { // { if ... 关键字
+            // 交给对应的关键字解析器解析
+            SyntaxParser syntaxParser1 = getSyntaxParser(phrase.literal());
+            Expression statement = null;
+            lambda.addCode(statement);
+            return false;
+        }
+
+        // phrase op ... 运算符表达式
+        String op = lexer.prefetchNextChars(it -> definition.isOperator(it));
+        if (op != null) {
+            Expression operator = operator(phrase, ExpressionFactory.symbol(op));
+            lambda.addCode(operator);
+            return false;
+        }
+
+        // phrase = ... 赋值表达式
+        if (lexer.currentIs('=')) {
+            Expression assignExpression = assignExpression(phrase);
+            lambda.addCode(assignExpression);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 解析 lambda 参数
+     * @param lambda
+     * @param containsComma 是否包含逗号（逗号分割），lambda 参数有两种形式：
+     *                    true 逗号分割 {p1, p2, p3 -> p4 | ...}
+     *                    false 空格分割 {p1 p2 p3 -> p4 | ...}
+     *                    null 初次解析
+     * @return true 有参数，false 无参数
+     */
+    private void parseLambdaParams(LambdaExpression lambda, Expression firstParam, boolean containsComma) {
+        while (lexer.currentNot('}')) {
+
+        }
+        Expression first = phrase();
+
+        lexer.skipBlank('\n');
+        if (first instanceof VariableExpression // { first::Int...
+                || first instanceof SymbolExpression) { // { first ...
+            if (lexer.prefetchNextChars(2, "->")) { // { first::Int ->...
+                lambda.addParams(first);
+                parseLambdaReturnType(lambda);
+                //parseLambdaBody(lambda);
+                //return true;
+            } else if (lexer.currentIs('|')) { // { first | ...
+                lexer.skipBlank('|', '\n');
+                lambda.addParams(first);
+                // parseLambdaBody(lambda);
+                //return true;
+            } else if (lexer.currentIs(',')) { // { first::Int, ... 逗号形式参数
+                if (Objects.nonNull(containsComma) && !containsComma) { // {p1 p2, p3 ... 空格形式的参数包含了逗号
+                    throw new ParseException("空格分割的参数，不能含有逗号 ','，或者全部使用逗号分割参数", lexer);
+                }
+                lexer.next(); // eat ','
+                lambda.addParams(first);
+                parseLambdaParams(lambda, null, true);
+            }
+        } else if (first instanceof TupleExpression) { // { (...)..
+            // 暂时不支持括号形式参数
+        } else if (Objects.isNull(containsComma)){ // 不含参数的 lambda
+            parseLambdaBody(lambda);
+        } else { //
+
+        }
+
+        //todo
+    }
+
+    private void parseLambdaReturnType(LambdaExpression lambda) {
+        Expression retType = phrase(); // 可能解析错误
+        lambda.setReturnType(retType);
+    }
+
+    // 解析 lambda 方法体；
+    private void parseLambdaBody(LambdaExpression lambda) {
+
+    }
+
+
+    /**
      * 解析 [...] 表达式
      *
      * 空格分割列表： [foo (1 + 2) 233]
@@ -345,6 +487,7 @@ public class LanParser {
      */
     private ListExpression squareBracketExpression() {
         lexer.next(); // eat '['
+        lexer.skipBlank('\n');
 
         ListExpression list = new ListExpression();
 
@@ -375,8 +518,14 @@ public class LanParser {
         return list;
     }
 
+    /**
+     * 解析 [...] 表达式
+     *
+     * 空格分割列表： [foo (1 + 2) 233]
+     * @return
+     */
     private void parseSquareBracketBySpace(ListExpression list) {
-        lexer.skipBlank();
+        lexer.skipBlank('\n'); // 支持换行
         if (lexer.currentIs(']')) {
             lexer.next();
             return;
