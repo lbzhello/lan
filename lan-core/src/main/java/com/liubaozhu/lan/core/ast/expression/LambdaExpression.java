@@ -21,15 +21,23 @@ public class LambdaExpression implements Expression {
      * 增加参数
      * @param param
      */
-    public void addParams(Expression param) {
-        this.params.add(param);
+    public void addParams(Expression... param) {
+        this.params.addAll(List.of(param));
+    }
+
+    public void addParams(List<Expression> params) {
+        this.params.addAll(params);
     }
 
     /**
      * 增加语句表达式
      * @param code
      */
-    public void addCode(Expression code) {
-        this.codes.add(code);
+    public void addCode(Expression... code) {
+        this.codes.addAll(List.of(code));
+    }
+
+    public void addCode(List<Expression> code) {
+        this.codes.addAll(code);
     }
 }
