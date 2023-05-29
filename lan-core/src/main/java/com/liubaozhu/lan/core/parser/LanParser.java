@@ -358,17 +358,23 @@ public class LanParser {
         lexer.next(); // eat '{'
         lexer.skipBlank('\n');
 
-        if (lexer.currentIs('|')) { // { | ...
-            lexer.next();
+        // 不含参数
+        if (lexer.currentIs('|') // { | ...
+                || lexer.currentIs(';')) { // { ; ...
+            lexer.skipBlank('\n', '|', ';');
 
-            // { | }
-            lexer.skipBlank('\n');
+            // { | ; }
             if (lexer.currentIs('}')) {
                 lexer.next(); // eat '}'
                 return lambda;
             }
             parseLambdaBody(lambda);
             return lambda;
+        }
+
+        // { -> ... 参数为空时可以省略，只有返回值形式
+        if (lexer.prefetchNextChars(2, "->")) {
+            parseLambdaReturnType(lambda);
         }
 
         if (lexer.currentIs('}')) { // {} 空lambda
@@ -378,17 +384,43 @@ public class LanParser {
 
         // 解析 lambda 参数
         parseLambdaParams(lambda);
-        // 解析 lambda 方法体
-        parseLambdaBody(lambda);
         return lambda;
     }
 
     /**
+     * { p1, p2, p3, ...
+     * 解析逗号形式的参数
      * 判断 statement 是否是 lambda 参数
      * @param statement
      * @return
      */
-    private boolean checkLambdaParams(Expression statement, List<Expression> lambdaParamCache) {
+    private boolean checkLambdaCommaParams(Expression statement, List<Expression> lambdaParamCache) {
+        return false;
+    }
+
+    /**
+     * { p1 p2 p3 ...
+     * 解析并检查是否为空格形式的参数
+     * 如果不是空格形式参数，会尝试当成 请求体解析
+     * 判断 statement 是否是 lambda 参数
+     * @param statement
+     * @return true 空格分割的参数形式
+     *         false 非空格，后续尝试当作请求体解析，请求体遇到 | 或 -> 则抛出异常
+     */
+    private boolean checkLambdaSpaceParams(Expression statement, List<Expression> lambdaParamCache) {
+        lexer.skipBlank('\n');
+
+        // { p1; ... 确定是语句，lambda 不含参数
+        if (lexer.currentIs(';')) {
+            lexer.skipBlank('\n', ';');
+            return false;
+        }
+
+        // { p1 p2, ... 空格形式参数带有 ','
+        if (lexer.currentIs(',')) {
+            throw new ParseException("lambda 解析错误：空格分割的参数不能加上 ','，或者参数全部采用 ',' 分割", lexer);
+        }
+
         // 如果是命令式参数，则 CommandExpression 列表中的值是变量声明类型
         if (statement instanceof CommandExpression command) {
             for (Expression elem : command.toArray()) {
@@ -402,7 +434,9 @@ public class LanParser {
         }
 
         // 变量声明类参数
-        if (statement instanceof VariableExpression || statement instanceof SymbolExpression) {
+        if (statement instanceof VariableExpression
+                || statement instanceof SymbolExpression
+                || statement instanceof LambdaExpression) {
             lambdaParamCache.add(statement);
             return true;
         }
@@ -422,7 +456,7 @@ public class LanParser {
      * @param lambdaParamCache
      * @param lambdaBodyCache
      * @return true 完成 lambda 参数后续解析
-     *         false 未完成解析，可能不含参数形式
+     *         false 未完成解析，可能是不含参数形式
      */
     private boolean parseLambdaParamsComplete(LambdaExpression lambda,
                                               List<Expression> lambdaParamCache,
@@ -479,18 +513,22 @@ public class LanParser {
         }
 
         // 逗号分割的参数形式
-        if (first instanceof VariableExpression || first instanceof SymbolExpression) {
+        if (first instanceof VariableExpression // { p1::Int, ...
+                || first instanceof SymbolExpression // { p1, ...
+                || first instanceof LambdaExpression // { {Int -> Int}, ...
+        ) {
             lambdaParamCache.add(first);
             // {p1 -> ... 单参数形式
-            boolean isComplete = parseLambdaParamsComplete(lambda, lambdaParamCache, lambdaBodyCache);
-            if (isComplete) {
+            if (parseLambdaParamsComplete(lambda, lambdaParamCache, lambdaBodyCache)) {
                 return;
             }
 
             // {p1, ... 逗号分割的参数
             if (lexer.currentIs(',')) {
-                Expression phrase = first;
-                while (phrase instanceof VariableExpression || phrase instanceof SymbolExpression) {
+                Expression statement = first;
+                while (statement instanceof VariableExpression // { p1::Int, ...
+                        || statement instanceof SymbolExpression // { p1, ...
+                        || statement instanceof LambdaExpression) { // { {Int | Int}, ...
                     if (lexer.currentIs(',')) {
                         lexer.next();
                         lexer.skipBlank('\n');
@@ -501,17 +539,20 @@ public class LanParser {
                     } else if (parseLambdaParamsComplete(lambda, lambdaParamCache, lambdaBodyCache)) { // p1, p2 -> 解析完成
                         return;
                     } else {
+                        // { p1, p2 p3 ...
                         throw new ParseException("lambda 参数缺少 ','", lexer);
-
                     }
 
-                    phrase = phrase();
-                    lambdaBodyCache.add(phrase);
-                    lambdaParamCache.add(phrase);
+                    statement = statement();
+                    lambdaBodyCache.add(statement);
+                    lambdaParamCache.add(statement);
                 }
 
-                // {p1, p2 p3...
-                throw new ParseException("lambda 参数缺少 ','", lexer);
+                // {p1, p2 + p3 ...
+                throw new ParseException("lambda 解析错误，参数类型不支持", lexer);
+            } else { // 空格分割的形式
+                // 空格分割的参数形式后面会重新解析
+                lambdaParamCache.clear();
             }
         }
 
@@ -519,9 +560,8 @@ public class LanParser {
         // {p1 p2
         //     p3::Str p4::Int -> ...
         Expression statement = first;
-        while (checkLambdaParams(statement, lambdaParamCache)) {
-            boolean isComplete = parseLambdaParamsComplete(lambda, lambdaParamCache, lambdaBodyCache);
-            if (isComplete) {
+        while (checkLambdaSpaceParams(statement, lambdaParamCache)) {
+            if (parseLambdaParamsComplete(lambda, lambdaParamCache, lambdaBodyCache)) {
                 return;
             }
             // 继续解析下一个语句
@@ -605,13 +645,57 @@ public class LanParser {
     }
 
     private void parseLambdaReturnType(LambdaExpression lambda) {
-        Expression retType = phrase(); // 可能解析错误
-        lambda.setReturnType(retType);
+        Expression retType = statement(); // 可能解析错误
+
+        if (retType instanceof VariableExpression // { p1 -> a::Int ...
+                || retType instanceof SymbolExpression  // { p1 -> Int ...
+                || retType instanceof TupleExpression // { p1 -> (Int, Str) ...
+                || retType instanceof LambdaExpression // { p1 -> {...} ...
+        ) {
+            lambda.setReturnType(retType);
+        } else {
+            throw new ParseException("lambda 解析错误：返回值类型不正确", lexer);
+        }
+
+        lexer.skipBlank();
+        // -> 后面必须由分割符 '|', '\n'
+        if (lexer.currentIs('|') // { p1 -> retType | ...
+                || lexer.currentIs('\n') // { p1 -> retType
+                || lexer.currentIs(';') // { p1 -> retType; ... 返回值支持 ';' 结尾
+                || lexer.currentIs('}') // { p1 -> retType }
+        ) {
+            lexer.skipBlank('|', '\n', ';');
+            if (lexer.currentIs('}')) {
+                lexer.next();
+                return;
+            }
+        } else {
+            throw new ParseException("lambda 解析错误：返回值后是否缺少换行符或分割符 '|'？", lexer);
+        }
+
+        parseLambdaBody(lambda);
     }
 
     // 解析 lambda 方法体；
     private void parseLambdaBody(LambdaExpression lambda) {
+        while (lexer.currentNot('}') && lexer.hasNext()) {
+            Expression statement = statement();
+            lambda.addCode(statement);
+            lexer.skipBlank('\n', ';');
 
+            // 请求体不能包含 | 后 ->
+            // { p1 p2 + p3 -> ...
+            if (lexer.currentIs('|') || lexer.prefetchNextChars(2, "->")) {
+                throw new ParseException("lambda解析错误：请求体不能包含 '|' 或 '->'，是否参数格式错误？", lexer);
+            }
+        }
+
+        if (lexer.currentNot('}')) {
+            throw new ParseException("lambda 解析错误：是否缺少关闭符 '}' ？", lexer);
+        }
+
+        lexer.next(); // eat '}'
+        return;
     }
 
 
