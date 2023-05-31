@@ -48,6 +48,7 @@ public class LanDefinition implements Definition {
     public static final String DEFINE = "define";
     public static final String FUNCTION = "fn";
     public static final String LET = "let";
+    public static final String LAMBDA = "lambda";
 
     // 泛型
     public static final String TYPE = "type";

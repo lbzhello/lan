@@ -1,8 +1,10 @@
 package com.liubaozhu.lan.core.parser;
 
-import com.liubaozhu.lan.core.lexer.LanLexer;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.base.impl.LanDefinition;
+import com.liubaozhu.lan.core.lexer.LanLexer;
+import com.liubaozhu.lan.core.parser.impl.FnSyntaxParser;
+import com.liubaozhu.lan.core.parser.impl.LambdaParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +19,8 @@ public final class LanShell {
         LanParser lanParser = LanParser.builder()
                 .lexer(lexer)
                 .definition(new LanDefinition())
-                .syntaxParser(null)
+                .syntaxParser(LanDefinition.LAMBDA, new LambdaParser())
+                .syntaxParser(LanDefinition.FUNCTION, new FnSyntaxParser())
                 .build();
 
         Expression statement = lanParser.statement();
