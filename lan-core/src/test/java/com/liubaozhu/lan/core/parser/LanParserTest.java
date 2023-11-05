@@ -1,8 +1,15 @@
 package com.liubaozhu.lan.core.parser;
 
+import cn.hutool.core.io.resource.ResourceUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 public class LanParserTest {
     private static final Logger logger = LoggerFactory.getLogger(LanParserTest.class);
@@ -49,33 +56,24 @@ public class LanParserTest {
 
     @Test
     public void lispTest() {
-        LanShell.printExpr("(cmd a (b 3) 8)");
-        LanShell.printExpr("(cmd a, b 3 8)");
+        LanShell.printFile("lan/expression/lisp.lan");
     }
 
     @Test
     public void commandTest() {
         logger.debug("命令表达式测试");
-        LanShell.printExpr("cmd a 6");
-        LanShell.printExpr("cmd a (2 + 3) 6 7");
-        // LanShell.printExpr("cmd a (2 + 3), 6 7");
-    }
-
-    @Test
-    public void wordTest() {
-        LanShell.printExpr("hello");
-        LanShell.printExpr("\"hello\"");
-        LanShell.printExpr("233");
-        LanShell.printExpr("233+");
-
+        LanShell.printFile("lan/expression/cmd.lan");
     }
 
     @Test
     public void operatorTest() {
-        logger.debug("运算符测试");
-        LanShell.printResult("\"hello\" + \"world\" + \n 2 + 5");
-
-        LanShell.printResult("123 + 456 + 789");
+        logger.debug("运算符表达式测试");
+        LanShell.printFile("lan/expression/operator.lan");
     }
 
+    @Test
+    public void wordTest() {
+        logger.debug("单词表达式测试");
+        LanShell.printFile("lan/expression/word.lan");
+    }
 }

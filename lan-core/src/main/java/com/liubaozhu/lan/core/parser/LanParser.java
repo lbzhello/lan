@@ -91,6 +91,10 @@ public class LanParser {
         return new LanParserBuilder();
     }
 
+    public boolean isEnd() {
+        return lexer.isEOF();
+    }
+
     /**
      * 字，原子表达式, 即最小结构的完整表达式
      * 123 || "abc" || 'abc' || `abc` || (statement) || [statement] || {statement}
@@ -106,9 +110,9 @@ public class LanParser {
         } else if (current == CURLY_BRACKET_LEFT) { // {
             return curlyBracketExpression();
         } else if (current == QUOTE_MARK_DOUBLE) { // "
-            return stringExpression();
+            return stringExpression('"');
         } else if (current == QUOTE_MARK_SINGLE) { // '
-
+            return stringExpression('\'');
         } else if (current == BACK_QUOTE) { // `
 
         } else if (lexer.isDelimiter(current)) { // ++i 可能是一元运算符，暂不支持
@@ -597,17 +601,18 @@ public class LanParser {
 
     /**
      * 解析 String
+     * @param flag String标识，" or '
      * @return
      */
-    private StringExpression stringExpression() {
-        lexer.next(); // eat "
+    private StringExpression stringExpression(char flag) {
+        lexer.next(); // eat " or '
         StringBuilder sb = new StringBuilder();
-        while (!lexer.currentIs('"') && lexer.hasNext()) {
+        while (!lexer.currentIs(flag) && lexer.hasNext()) {
             sb.append(lexer.current());
             lexer.next();
         }
 
-        if (lexer.currentIs('"')) {
+        if (lexer.currentIs(flag)) {
             lexer.next(); // eat "
         }
         return new StringExpression(sb.toString());

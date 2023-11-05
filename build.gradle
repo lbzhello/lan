@@ -30,9 +30,19 @@ allprojects {
     sourceSets {
         main {
             resources {
-                //可以将java目录下的所有非.java资源打包到classes下
+                // 将该目录下的资源文件打包到 build/resources 下
                 srcDir "src/main/java"
+
             }
+
+        }
+
+        test {
+            resources {
+                // 将该目录下的资源文件打包到 build/resources 下
+                srcDir "src/test/lan"
+            }
+
         }
     }
 

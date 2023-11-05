@@ -41,7 +41,7 @@ public class StringExpression extends ClassExpression implements Value {
 
     @Override
     public String toString() {
-        return Objects.isNull(value) ? "" : value;
+        return Objects.isNull(value) ? "\"\"" : "\"" + value + "\"";
     }
 
     public StringExpression plus(Object that) {
