@@ -1,0 +1,3 @@
+(cmd a (b 3) 8)
+cmd a b cd
+(cmd a, b 3 8)

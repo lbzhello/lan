@@ -111,7 +111,7 @@ public class LanLexer extends TextReader {
      * @return
      */
     public boolean isStatementEnd() {
-        return isEOF() || currentMatch('\n', ';', ',', ')', ']', '}');
+        return isEOF() || currentMatch('\n', ';', ')', ']', '}');
     }
 
     /**

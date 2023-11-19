@@ -1,0 +1,38 @@
+
+
+
+sourceSets {
+    // 拷贝资源文件
+    // 方式 1
+    task copyTestResources(type: Copy) {
+        from "${projectDir}/src/test/resources"
+        into "${buildDir}/classes/test"
+    }
+    processTestResources.dependsOn copyTestResources
+
+    task copyResources(type: Copy) {
+        from "${projectDir}/src/main/resources"
+        into "${buildDir}/classes/main"
+    }
+    processResources.dependsOn copyResources
+
+    // 方式 2
+    main {
+        resources {
+            // 将该目录下的资源文件打包到 build/resources 下
+            srcDir "src/main/java"
+
+        }
+        // 资源文件重定向到 build/classes/main
+        output.resourcesDir = "${buildDir}/classes/main"
+    }
+
+    test {
+        resources {
+            // 将该目录下的资源文件打包到 build/resources 下
+            srcDir "src/test/lan"
+        }
+        // 资源文件重定向到 build/classes/test
+        output.resourcesDir = "${buildDir}/classes/test"
+    }
+}

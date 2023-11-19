@@ -5,9 +5,8 @@ import com.liubaozhu.lan.core.lexer.LanLexer;
 /**
  * 语法解析错误
  */
-public class ParseException extends RuntimeException {
+public class ParseException extends LanEexception {
     private String message;
-    private LanLexer parser;
 
     public ParseException(String message) {
         this(message, null);
@@ -18,14 +17,17 @@ public class ParseException extends RuntimeException {
     }
 
     public ParseException(String message, LanLexer parser, Exception exception) {
-        super(message, exception);
+        this("-1", message, parser, exception);
+    }
+
+    public ParseException(String code, String message, LanLexer parser, Exception exception) {
+        super(code, message, exception);
         this.message = "[" +
                 "line=" + parser.getLine() + ", " +
                 "column=" + parser.getColumn() + ", " +
                 "char='" + parser.current() + "'" +
                 "] " +
                 message;
-        this.parser = parser;
     }
 
     @Override
