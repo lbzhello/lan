@@ -6,6 +6,7 @@ import com.liubaozhu.lan.core.ast.ExpressionFactory;
 import com.liubaozhu.lan.core.ast.expression.*;
 import com.liubaozhu.lan.core.base.Definition;
 import com.liubaozhu.lan.core.base.impl.LanDefinition;
+import com.liubaozhu.lan.core.exception.ErrorCode;
 import com.liubaozhu.lan.core.exception.ParseException;
 import com.liubaozhu.lan.core.lexer.LanLexer;
 
@@ -345,7 +346,7 @@ public class LanParser {
         try {
             cmd.add(phrase());
         } catch (Exception e) {
-            throw new ParseException("命令表达式语法错误，参数必须是合法 phrase 表达式", lexer, e);
+            throw new ParseException(ErrorCode.PARSE_COMMAND_FAILED, "命令表达式语法错误，参数必须是合法 phrase 表达式", lexer, e);
         }
         return command(cmd);
 
@@ -402,6 +403,10 @@ public class LanParser {
             parseSquareBracketBySpace(list);
         }
 
+        if (lexer.currentIs(']')) {
+            lexer.next();
+        }
+
         return list;
     }
 
@@ -414,7 +419,6 @@ public class LanParser {
     private void parseSquareBracketBySpace(ListExpression list) {
         lexer.skipBlank('\n'); // 支持换行
         if (lexer.currentIs(']')) {
-            lexer.next();
             return;
         }
 
@@ -680,5 +684,13 @@ public class LanParser {
             return this;
         }
 
+    }
+
+    private void throwException(String code, String message) {
+        throwException(code, message, null);
+    }
+
+    private void throwException(String code, String message, Exception ex) {
+        throw new ParseException(code, message, getLanLexer(), ex);
     }
 }

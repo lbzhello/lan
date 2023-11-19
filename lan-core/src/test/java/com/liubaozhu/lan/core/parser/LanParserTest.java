@@ -1,18 +1,20 @@
 package com.liubaozhu.lan.core.parser;
 
-import cn.hutool.core.io.resource.ResourceUtil;
+import com.liubaozhu.lan.core.exception.ErrorCode;
+import com.liubaozhu.lan.core.test.LanTestUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-
 public class LanParserTest {
     private static final Logger logger = LoggerFactory.getLogger(LanParserTest.class);
+
+    @Test
+    public void test() {
+        LanTestUtil.parseText("cmd a, b")
+                .printResult();
+//                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
+    }
 
     @Test
     public void squareBracketTest() {
@@ -22,7 +24,6 @@ public class LanParserTest {
 
     @Test
     public void roundBracketTest() {
-        logger.debug("括号表达式测试");
         LanShell.printExpr("foo(p1, p2, p3)");
         LanShell.printExpr("foo(p1 p2 p3)");
         LanShell.printExpr("(foo, bar = 3 + 2\n, 5)");
@@ -37,43 +38,41 @@ public class LanParserTest {
 
     @Test
     public void assignTest() {
-        logger.debug("赋值表达式测试");
-        LanShell.printExpr("a = 3 + 2");
-        LanShell.printExpr("a = b = c");
+        LanShell.printFile("lan/expression/assign.lan");
     }
 
     @Test
     public void listTest() {
-        LanShell.printExpr("[cmd + 2 , 3 + 2, 5]");
-        LanShell.printExpr("[cmd (3 + 2) 5]");
+        LanShell.printFile("lan/expression/list.lan");
     }
 
     @Test
     public void tupleTest() {
-        LanShell.printExpr("(cmd, 3, 5)");
-        LanShell.printExpr("(cmd, 3 5, 6)");
+        logger.debug("tuple test");
+        LanShell.printFile("lan/expression/tuple.lan");
     }
 
     @Test
     public void lispTest() {
+        logger.debug("lisp test");
         LanShell.printFile("lan/expression/lisp.lan");
     }
 
     @Test
     public void commandTest() {
-        logger.debug("命令表达式测试");
+        logger.debug("command test");
         LanShell.printFile("lan/expression/cmd.lan");
     }
 
     @Test
     public void operatorTest() {
-        logger.debug("运算符表达式测试");
+        logger.debug("operator test");
         LanShell.printFile("lan/expression/operator.lan");
     }
 
     @Test
     public void wordTest() {
-        logger.debug("单词表达式测试");
+        logger.debug("word test");
         LanShell.printFile("lan/expression/word.lan");
     }
 }
