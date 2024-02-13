@@ -1,2 +1,1 @@
-cmd a 6
-cmd a (2 + 3) 6 7
+(cmd a (b 3) 8)

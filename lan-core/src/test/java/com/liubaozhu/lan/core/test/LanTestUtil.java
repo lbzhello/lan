@@ -1,11 +1,16 @@
 package com.liubaozhu.lan.core.test;
 
+import cn.hutool.core.io.resource.ResourceUtil;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.exception.LanEexception;
 import com.liubaozhu.lan.core.parser.LanShell;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -39,12 +44,25 @@ public class LanTestUtil {
         System.out.println();
     }
 
+    /**
+     * 解析语法数
+     * @param text
+     * @return
+     */
     public static ExpressionSpec parseText(String text) {
 
         try {
             return new ExpressionSpec(LanShell.interpret(text));
         } catch (LanEexception e) {
             return new ExpressionSpec(e);
+        }
+    }
+
+    public static ExpressionSpec parseFile(String file) {
+        try {
+            return parseText(Files.readString(Path.of(ResourceUtil.getResource(file).toURI())));
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -82,14 +100,13 @@ public class LanTestUtil {
 
             for (int i = 0; i < exprs.size(); i++) {
                 Expression expr = exprs.get(i);
-                Expression rst = expr.eval();
-                logger.debug("{}: {} => {}", i + 1, expr, rst);
+                logger.info("{}: {}", i + 1, expr);
             }
         }
 
         public void matchErrorCode(String errorCode) {
             if (Objects.isNull(ex)) {
-                throw new TestException("缺少异常信息: null");
+                throw new TestException("无异常信息");
             }
 
             if (!Objects.equals(errorCode, ex.getCode())) {

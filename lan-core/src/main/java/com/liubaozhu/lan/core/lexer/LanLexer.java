@@ -17,7 +17,7 @@ public class LanLexer extends TextReader {
     private static final Logger logger = LoggerFactory.getLogger(LanLexer.class);
 
     // 最大预取数量，有时候需要查看下几个字符来判断语法行为
-    // 这个值应该大于关键子长度
+    // 这个值应该大于关键字长度
     public static final int MAX_PREFETCH_SIZE = 32;
 
     // 单词分割符，用来分割 token

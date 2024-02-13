@@ -12,8 +12,7 @@ public class LanParserTest {
     @Test
     public void test() {
         LanTestUtil.parseText("cmd a, b")
-                .printResult();
-//                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
+                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
     }
 
     @Test
@@ -53,26 +52,45 @@ public class LanParserTest {
     }
 
     @Test
+    public void tupleErrorTest() {
+        LanTestUtil.parseText("(cmd, 3 5, 6)")
+                .printResult();
+
+        LanTestUtil.parseText("(cmd a, b 3 8)")
+                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
+    }
+
+    @Test
     public void lispTest() {
         logger.debug("lisp test");
-        LanShell.printFile("lan/expression/lisp.lan");
+        LanTestUtil.parseFile("lan/expression/lisp.lan")
+                .printResult();
     }
 
     @Test
     public void commandTest() {
         logger.debug("command test");
-        LanShell.printFile("lan/expression/cmd.lan");
+        LanTestUtil.parseFile("lan/expression/cmd.lan")
+                .printResult();
+    }
+
+    @Test
+    public void commandErrorTest() {
+        LanTestUtil.parseText("cmd a, b")
+                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
     }
 
     @Test
     public void operatorTest() {
         logger.debug("operator test");
-        LanShell.printFile("lan/expression/operator.lan");
+        LanTestUtil.parseFile("lan/expression/operator.lan")
+                .printResult();
     }
 
     @Test
     public void wordTest() {
         logger.debug("word test");
-        LanShell.printFile("lan/expression/word.lan");
+        LanTestUtil.parseFile("lan/expression/word.lan")
+                .printResult();
     }
 }
