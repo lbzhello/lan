@@ -20,6 +20,10 @@ public class ParseException extends LanEexception {
         this("-1", message, parser, exception);
     }
 
+    public ParseException(String code, String message, LanLexer parser) {
+        this(code, message, parser, null);
+    }
+
     public ParseException(String code, String message, LanLexer parser, Exception exception) {
         super(code, message, exception);
         this.message = "[" +

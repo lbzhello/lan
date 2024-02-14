@@ -115,10 +115,18 @@ public class LanLexer extends TextReader {
     }
 
     /**
-     * 是否非换行空白字符
+     * 是否空白字符
      * @return
      */
     public boolean isBlank() {
+        return Character.isWhitespace(current());
+    }
+
+    /**
+     * 是否非换行空白字符
+     * @return
+     */
+    public boolean isBlankNotLF() {
         return Character.isWhitespace(current()) && currentNot('\n');
     }
 
@@ -127,7 +135,7 @@ public class LanLexer extends TextReader {
      * @param skipChars
      */
     public void skipBlank(char... skipChars) {
-        while (Character.isWhitespace(current()) && currentNot('\n') || currentMatch(skipChars)) {
+        while (isBlankNotLF() || currentMatch(skipChars)) {
             next();
         }
     }

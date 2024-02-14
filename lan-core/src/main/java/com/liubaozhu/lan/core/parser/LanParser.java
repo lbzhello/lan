@@ -121,7 +121,7 @@ public class LanParser {
             if (op == null) { // 间隔符
                 throw new ParseException("word 表达式语法错误，非法间隔符", lexer);
             }
-            return new SymbolExpression(op); // ++
+            throw new ParseException(ErrorCode.NOT_REALIZED, "语法暂未实现", lexer);
         } else if (lexer.hasNext()) { // 数字，字面量等
             String token = lexer.nextToken();
 
@@ -152,7 +152,7 @@ public class LanParser {
      * @return
      */
     private Expression phrase(Expression left) {
-        if (lexer.isBlank()) { // left ... 中间有空白字符
+        if (lexer.isBlankNotLF()) { // left ... 中间有空白字符
             lexer.skipBlank();
             return left;
         }
@@ -192,6 +192,40 @@ public class LanParser {
     }
 
     /**
+     * 一组合法子表达式，遇到间隔符返回
+     *
+     * @return
+     */
+    public Expression expression() {
+        Expression phrase = phrase();
+        if (lexer.isStatementEndSkipBlank()) {
+            return phrase;
+        }
+
+        // 关键字 if for fn class 等语法结构解析
+        if (this.definition.isKeyWord(phrase.literal())) {
+            // 交给对应的关键字解析器解析
+            SyntaxParser syntaxParser1 = getSyntaxParser(phrase.literal());
+            // 调用
+            return null;
+        }
+
+        // phrase op ... 运算符表达式
+        String op = lexer.prefetchNextChars(it -> definition.isOperator(it));
+        if (op != null) {
+            return operator(phrase, ExpressionFactory.symbol(op));
+        }
+
+        // phrase = ... 赋值表达式
+        if (lexer.currentIs('=')) {
+            return assignExpression(phrase, false);
+        }
+
+        // 直接能解析到的最小表达式，不做语法判断
+        return phrase;
+    }
+
+    /**
      * 语句，及一个完整的表达式，默认支持命令行
      * @return
      */
@@ -202,7 +236,7 @@ public class LanParser {
     /**
      * 语句，即由
      *      单词 {@link #word()}，
-     *      赋值表达式 {@link #assignExpression(Expression)}，
+     *      赋值表达式 {@link #assignExpression}，
      *      运算符 {@link #operator(Expression, SymbolExpression)}，
      *      命令 {@link #command(CommandExpression)}
      * 等组成的一条完整句子。
@@ -237,7 +271,7 @@ public class LanParser {
 
         // phrase = ... 赋值表达式
         if (lexer.currentIs('=')) {
-            return assignExpression(phrase);
+            return assignExpression(phrase, supportCommand);
         }
 
         if (!supportCommand) {
@@ -251,14 +285,20 @@ public class LanParser {
         return command;
     }
 
+    private Expression assignExpression(Expression left) {
+        return assignExpression(left, true);
+    }
+
     /**
      * 赋值表达式
      * expr = operator
      * expr = p1 + p2 = p3 + p4 + p5
-     * @param left
+     * @param left 等号左边的值
+     * @param supportCommand 是否支持命令表达式 {@link #command}, 为了语法简介，
+     *                       行开始的表达式支持命令，子表达式不支持命令
      * @return
      */
-    private Expression assignExpression(Expression left) {
+    private Expression assignExpression(Expression left, boolean supportCommand) {
         lexer.next(); // eat =
 
         lexer.skipBlank('\n'); // 跳过空白和换行
@@ -266,7 +306,7 @@ public class LanParser {
             throw new ParseException("解析错误，等号后缺少表达式", lexer);
         }
 
-        Expression right = statement(); // left = statement...
+        Expression right = statement(supportCommand); // left = statement...
 
         AssignExpression assign = new AssignExpression();
         assign.add(left);
@@ -304,7 +344,7 @@ public class LanParser {
         eval.add(method); // (left.op ...
 
         Expression right = phrase();
-        if (lexer.isStatementEndSkipBlank()) { // left op right
+        if (lexer.isStatementEndSkipBlank() || lexer.currentIs(',')) { // left op right
             eval.add(right);
             return eval;
         }
@@ -495,17 +535,19 @@ public class LanParser {
         // (,) 空元组表达式
         if (lexer.currentIs(',')) {
             lexer.skipBlank(',', '\n');
-            if (!lexer.currentIs(')')) {
+            TupleExpression tuple = new TupleExpression();
+            if (lexer.currentIs(')')) {
                 lexer.next(); // eat ')'
-                return new TupleExpression();
+                return tuple;
             } else {
-                throw new ParseException("元组表达式解析错误，空元组表达式格式：(,); 非空元组表达式不能以 ',' 号开始", lexer);
+                roundBracketTuple(tuple);
+                return tuple;
             }
 
         }
 
         // (expr...
-        Expression statement = statement();
+        Expression statement = expression();
 
         // (expr,... 元组表达式
         if (lexer.currentIs(',')) {
@@ -515,7 +557,7 @@ public class LanParser {
             return tuple;
         }
 
-        // (statement)... 语句等表达式，e.g. (a + b) || (a = c + d) || (max a b)
+        // (statement)... 语句等表达式，e.g. (a + b) || (a = c + d)
         if (lexer.currentIs(')')) {
             lexer.next(); // eat ')'
             return statement;
@@ -527,6 +569,8 @@ public class LanParser {
         // (cmd expr \n expr... lisp 表达式中的命令支持换行
         if (statement instanceof CommandExpression command) {
             lisp.addAll(command.toArray());
+        } else {
+            lisp.add(statement);
         }
 
         roundBracketLisp(lisp);
@@ -535,7 +579,7 @@ public class LanParser {
 
     /**
      * 括号表达式，lisp 语法
-     * (max 2 5 + 6)
+     * (max 2 (5 + 6))
      * @return
      */
     private void roundBracketLisp(LispExpression lisp) {
@@ -547,7 +591,7 @@ public class LanParser {
 
         // (
         if (!lexer.hasNext()) {
-            throw new ParseException("lisp 表达式解析错误，是否缺少 ')' ?", lexer);
+            throw new ParseException(ErrorCode.PARSE_LISP_FAILED, "lisp 表达式解析错误，是否缺少 ')' ?", lexer);
         }
 
         try {
@@ -555,7 +599,7 @@ public class LanParser {
             Expression phrase = phrase();
             lisp.add(phrase);
         } catch (Exception e) {
-            throw new ParseException("lisp 表达式解析错误，参数只支持词语表达式，是否缺少 ')' ?", lexer, e);
+            throw new ParseException(ErrorCode.PARSE_LISP_FAILED, "lisp 表达式解析错误：" + e.getMessage(), lexer, e);
         }
 
         // 递归解析
@@ -576,28 +620,27 @@ public class LanParser {
         }
 
         if (lexer.currentIs(',')) {
-            lexer.next(); // eat ','
-            lexer.skipBlank('\n');
-            // (tuple,)... 允许最后多个空格
+            lexer.skipBlank('\n', ',');
+            // (tuple,)... 允许最后多个 ','
             if (lexer.currentIs(')')) {
                 lexer.next(); // eat ')'
                 return;
             }
-        } else {
-            throw new ParseException("tuple 表达式解析错误，缺少 ','", lexer);
+        } else if (!tuple.isEmpty()) { // 空情況肯能是 (,expr) 需要继续向下解析表达式 expr
+            throw new ParseException(ErrorCode.PARSE_TUPLE_FAILED, "tuple 表达式解析错误，缺少 ','", lexer);
         }
 
         // (a, b
         if (!lexer.hasNext()) {
-            throw new ParseException("元组表达式解析错误，缺少 ')'。", lexer);
+            throw new ParseException(ErrorCode.PARSE_TUPLE_FAILED, "元组表达式解析错误，缺少 ')'。", lexer);
         }
 
         // (tuple, param,... 解析参数，元组中参数不支持命令式调用
         try {
-            Expression param = statement(false);
+            Expression param = expression();
             tuple.add(param);
         } catch (Exception e) {
-            throw new ParseException("元组表达式解析错误，是否缺少 ',' ?", lexer);
+            throw new ParseException(ErrorCode.PARSE_TUPLE_FAILED, "元组表达式解析错误，是否缺少 ',' ?", lexer);
         }
 
         roundBracketTuple(tuple);

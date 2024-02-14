@@ -1,2 +1,3 @@
 a = 3 + 2
 a = b = c
+a = cmd a b

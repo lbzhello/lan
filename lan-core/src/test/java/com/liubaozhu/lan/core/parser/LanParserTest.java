@@ -22,42 +22,37 @@ public class LanParserTest {
     }
 
     @Test
-    public void roundBracketTest() {
-        LanShell.printExpr("foo(p1, p2, p3)");
-        LanShell.printExpr("foo(p1 p2 p3)");
-        LanShell.printExpr("(foo, bar = 3 + 2\n, 5)");
-
-        LanShell.printExpr("(cmd p1 = 5 + \n6 9 + 8 10)");
-
-        LanShell.printExpr("(a, b\n, ,\n,c, d)");
-        LanShell.printExpr("(,)");
-        LanShell.printExpr("(a,)");
-        LanShell.printExpr("(,a)");
+    public void fnCallTest() {
+        LanTestUtil.parseFile("lan/expression/fn-call.lan")
+                .printResult();
     }
 
     @Test
     public void assignTest() {
-        LanShell.printFile("lan/expression/assign.lan");
+        LanTestUtil.parseFile("lan/expression/assign.lan")
+                .printResult();
     }
 
     @Test
     public void listTest() {
-        LanShell.printFile("lan/expression/list.lan");
+        LanTestUtil.parseFile("lan/expression/list.lan")
+                .printResult();
     }
 
     @Test
     public void tupleTest() {
         logger.debug("tuple test");
-        LanShell.printFile("lan/expression/tuple.lan");
+        LanTestUtil.parseFile("lan/expression/tuple.lan")
+                .printResult();
     }
 
     @Test
     public void tupleErrorTest() {
         LanTestUtil.parseText("(cmd, 3 5, 6)")
-                .printResult();
+                .matchErrorCode(ErrorCode.PARSE_TUPLE_FAILED);
 
         LanTestUtil.parseText("(cmd a, b 3 8)")
-                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
+                .matchErrorCode(ErrorCode.PARSE_LISP_FAILED);
     }
 
     @Test
