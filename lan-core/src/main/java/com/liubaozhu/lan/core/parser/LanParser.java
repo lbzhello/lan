@@ -470,7 +470,7 @@ public class LanParser {
             Expression phrase = phrase();
             list.add(phrase);
         } catch (Exception e) {
-            throw new ParseException("列表表达式 [] 解析错误", lexer, e);
+            throw new ParseException("列表表达式 [] 解析错误: " + e.getMessage(), lexer, e);
         }
 
         parseSquareBracketBySpace(list);
@@ -490,8 +490,7 @@ public class LanParser {
         }
 
         if (lexer.currentIs(',')) {
-            lexer.next();
-            lexer.skipBlank('\n');
+            lexer.skipBlank('\n', ',');
             // list,] 允许最后多个 ','
             if (lexer.currentIs(']')) {
                 lexer.next(); // eat ']'
@@ -506,8 +505,8 @@ public class LanParser {
         }
 
         try {
-            Expression statement = statement(false);
-            list.add(statement);
+            Expression phrase = expression();
+            list.add(phrase);
         } catch (Exception e) {
             throw new ParseException("列表表达式 [] 解析错误", lexer, e);
         }

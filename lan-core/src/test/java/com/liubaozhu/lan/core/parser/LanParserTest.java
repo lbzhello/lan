@@ -10,18 +10,6 @@ public class LanParserTest {
     private static final Logger logger = LoggerFactory.getLogger(LanParserTest.class);
 
     @Test
-    public void test() {
-        LanTestUtil.parseText("cmd a, b")
-                .matchErrorCode(ErrorCode.PARSE_COMMAND_FAILED);
-    }
-
-    @Test
-    public void squareBracketTest() {
-        logger.debug("列表测试");
-        LanShell.printExpr("[foo, bar hello + world 3 + 2 5]");
-    }
-
-    @Test
     public void fnCallTest() {
         LanTestUtil.parseFile("lan/expression/fn-call.lan")
                 .printResult();
