@@ -17,7 +17,7 @@
         - %T : 线程号
         - %L : 日志输出所在行数
         - %M : 日志输出所在方法名 -->
-        <Property name="log_pattern">[%d{yyyy-MM-dd HH:mm:ss.SSS}][%-5p][%T][%c.%M:%L] %msg%xEx%n</Property>
+        <Property name="log_pattern">%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5p [%t:%T] [%c.%M:%L] %msg%xEx%n</Property>
         <!-- 单个日志文件最大大小，单位可以是KB, MB or GB -->
         <Property name="max_single_file_size">1MB</Property>
         <Property name="project.name">finalysis</Property>
