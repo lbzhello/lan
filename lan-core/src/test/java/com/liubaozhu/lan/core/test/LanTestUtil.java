@@ -4,8 +4,8 @@ import cn.hutool.core.io.resource.ResourceUtil;
 import com.liubaozhu.lan.core.ast.Expression;
 import com.liubaozhu.lan.core.exception.LanEexception;
 import com.liubaozhu.lan.core.parser.LanShell;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -16,7 +16,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 public class LanTestUtil {
-    public static final Logger logger = LoggerFactory.getLogger(LanTestUtil.class);
+    public static final Logger logger = LogManager.getLogger(LanTestUtil.class);
 
     public static void main(String[] args) {
         CompletableFuture.supplyAsync(() -> {

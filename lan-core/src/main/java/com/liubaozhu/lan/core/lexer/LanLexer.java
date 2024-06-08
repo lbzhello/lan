@@ -2,8 +2,8 @@ package com.liubaozhu.lan.core.lexer;
 
 import com.liubaozhu.lan.core.util.FileUtils;
 import com.liubaozhu.lan.core.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +14,7 @@ import java.util.function.Predicate;
  * 词法分析器
  */
 public class LanLexer extends TextReader {
-    private static final Logger logger = LoggerFactory.getLogger(LanLexer.class);
+    private static final Logger logger = LogManager.getLogger(LanLexer.class);
 
     // 最大预取数量，有时候需要查看下几个字符来判断语法行为
     // 这个值应该大于关键字长度

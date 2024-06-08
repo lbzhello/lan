@@ -6,8 +6,8 @@ import com.liubaozhu.lan.core.base.impl.LanDefinition;
 import com.liubaozhu.lan.core.lexer.LanLexer;
 import com.liubaozhu.lan.core.parser.impl.FnSyntaxParser;
 import com.liubaozhu.lan.core.parser.impl.LambdaParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +18,7 @@ import java.util.List;
  * 实时解析引擎
  */
 public final class LanShell {
-    private static final Logger logger = LoggerFactory.getLogger(LanShell.class);
+    private static final Logger logger = LogManager.getLogger(LanShell.class);
 
     public static List<Expression> interpret(String text) {
         LanLexer lexer = LanLexer.text(text);

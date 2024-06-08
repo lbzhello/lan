@@ -2,12 +2,12 @@ package com.liubaozhu.lan.core.parser;
 
 import com.liubaozhu.lan.core.exception.ErrorCode;
 import com.liubaozhu.lan.core.test.LanTestUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LanParserTest {
-    private static final Logger logger = LoggerFactory.getLogger(LanParserTest.class);
+    private static final Logger logger = LogManager.getLogger(LanParserTest.class);
 
     @Test
     public void fnCallTest() {
